@@ -255,19 +255,36 @@ object RewritingSystem {
   }
 
   /** Unions of subobjects of `g1` and `g2`. */
-  def unions(g1: Graph, g2: Graph): Seq[Graph] =
-    for ((pb, m1, m2) <- intersections(g1, g2)) yield {
+  def unions(g1: Graph, g2: Graph) = //: Seq[(Graph, Match, Match)] =
+    for ((pb, m1, m2) <- intersections(g1, g2).take(2)) yield {
+
+      println("pb: " + pb)
+      println("m1: " + m1)
+      println("m2: " + m2)
+
       // get missing nodes
-      val g1nodes = g1.nodes.toSeq
-      val g2nodes = g2.nodes.toSeq
-      // add missing nodes
+      val g1nodes = g1.nodes.toSeq diff m1.fn.values.toSeq
+      val g2nodes = g2.nodes.toSeq diff m2.fn.values.toSeq
+      val n1out = for (n1 <- g1nodes) yield
+        n1.name + ",:" + n1.label
+      val n2out = for (n2 <- g2nodes) yield
+        "," + n2.name + ":" + n2.label
 
       // get missing edges
-      val g1edges = g1.edges.toSeq
-      val g2edges = g2.edges.toSeq
-      // add missing edges
+      val g1edges = g1.edges.toSeq diff m1.fe.values.toSeq
+      val g2edges = g2.edges.toSeq diff m2.fe.values.toSeq
+      println("g1edges: " + g1edges)
+      println("g2edges: " + g2edges)
+      // 4 types of outer edges we need: intersection^2, outside^2,
+      // intersection-outside, outside-intersection (can the last two
+      // be treated indifferently
+      // val e1out = for (e1 <- g1edges) yield ...
+      // val e2out = for (e2 <- g2edges) yield ...
 
-      pb
+      // add missing nodes and edges (po for pushout)
+      val po = pb ++ n1out ++ n2out // ++ e1out ++ e2out
+
+      po
     }
 
   def relevantLeftUnions(g: Graph, r: Rule): Seq[Graph] = {
