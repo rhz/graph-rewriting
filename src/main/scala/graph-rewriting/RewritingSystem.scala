@@ -1,7 +1,8 @@
 package graph_rewriting
 
 // import scala.reflect.runtime.universe.TypeTag
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
+import mutable.ArrayBuffer
 
 import scalax.{collection => c}
 import c.GraphEdge._
@@ -33,8 +34,8 @@ object RewritingSystem {
 
     def matches(that: Node): Boolean = this.label == that.label
 
-    override def toString = "\"" + name +
-      (if (label.nonEmpty) ":" + label else "") + "\""
+    override def toString = "\"" + name + // ":" + label + "\""
+      (if (label.isEmpty) "" else ":" + label) + "\""
 
     override def equals(that: Any) = that match {
       case Node(nme,_) => this.name == nme
@@ -122,11 +123,17 @@ object RewritingSystem {
   final implicit class NodeToEdge(n1: Node) {
     def ~+>(n2: Node)(label: Label) =
       new EqDiEdge[Node]((n1, n2), label)
+
+    def ~>(n2: Node) =
+      new EqDiEdge[Node]((n1, n2), "")
   }
 
   final implicit class StringToEdge(s1: String) {
     def ~+>(s2: String)(label: Label) =
       new EqDiEdge[Node]((strToNode(s1), strToNode(s2)), label)
+
+    def ~>(s2: String) =
+      new EqDiEdge[Node]((strToNode(s1), strToNode(s2)), "")
   }
 
   object :~> {
@@ -186,16 +193,21 @@ object RewritingSystem {
       val i1 = (nodesOut, g1nodes).zipped.toMap
       val i2 = (nodesOut, g2nodes).zipped.toMap
 
-      // add edges
+      // collect all edges between nodes in intersection
+      val seen1 = mutable.Set[g1.EdgeT]();
+      val seen2 = mutable.Set[g2.EdgeT]();
       val edges: Seq[(Edge, g1.EdgeT, g2.EdgeT)] =
         for {
           u <- nodesOut;
           v <- nodesOut;
           e1 <- i1(u) outgoingTo i1(v);
           e2 <- i2(u) outgoingTo i2(v);
-          if e1 matches e2
+          if !seen1(e1) && !seen2(e2) && (e1 matches e2);
+          _ = seen1 += e1
+          _ = seen2 += e2
         } yield ((u ~+> v)(e1.label), e1, e2)
 
+      // add subsets of found edges to intersection
       for (i <- 0 to edges.length;
            es <- edges.combinations(i)) yield {
         // put the new and old edges apart
@@ -216,7 +228,6 @@ object RewritingSystem {
         (h, Match(h, g1)(fn1, fe1), Match(h, g2)(fn2, fe2))
       }
     }
-
     gs.flatten
   }
 
@@ -244,20 +255,20 @@ object RewritingSystem {
   }
 
   /** Unions of subobjects of `g1` and `g2`. */
-  def unions(g1: Graph, g2: Graph): Seq[Graph] = {
-    val (pbs, m1, m2) = intersections(g1, g2).unzip3
-    // get missing nodes
-    val g1nodes = g1.nodes.toSeq
-    val g2nodes = g2.nodes.toSeq
-    // add missing nodes
+  def unions(g1: Graph, g2: Graph): Seq[Graph] =
+    for ((pb, m1, m2) <- intersections(g1, g2)) yield {
+      // get missing nodes
+      val g1nodes = g1.nodes.toSeq
+      val g2nodes = g2.nodes.toSeq
+      // add missing nodes
 
-    // get missing edges
-    val g1edges = g1.edges.toSeq
-    val g2edges = g2.edges.toSeq
-    // add missing edges
+      // get missing edges
+      val g1edges = g1.edges.toSeq
+      val g2edges = g2.edges.toSeq
+      // add missing edges
 
-    pbs
-  }
+      pb
+    }
 
   def relevantLeftUnions(g: Graph, r: Rule): Seq[Graph] = {
     List()
@@ -389,11 +400,13 @@ object RewritingSystem {
 
   // --- Rules ---
 
-  class Rule(val lhs: Graph, val rhs: Graph, val rate: Rate)
+  class Rule(l: Graph, r: Graph, val rate: Rate)
       extends MonicPartial {
 
-    val dom = lhs
-    val cod = rhs
+    val dom = l
+    val cod = r
+    @inline final def lhs: Graph = dom
+    @inline final def rhs: Graph = cod
     val fn = (dom.nodes, cod.nodes).zipped.toMap
     val fe = (dom.edges, cod.edges).zipped.toMap
 
