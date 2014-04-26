@@ -5,22 +5,33 @@ import scala.collection.mutable
 import mutable.ArrayBuffer
 
 import scalax.{collection => c}
-import c.GraphEdge._
-import c.GraphPredef.OuterEdge
+import c.GraphEdge._ // EdgeCopy,...
+import c.GraphPredef._ // OuterEdge,Param
 
 
 // abstract class RewritingSystem {
 object RewritingSystem {
 
   type Edge = EqDiEdge[Node]
-  type Graph = c.Graph[Node, EqDiEdge]
+  type Graph = c.mutable.Graph[Node, EqDiEdge]
   type Label = String
 
 
   // --- Graphs ---
 
   // import Graph companion object
-  val Graph = c.Graph
+  val Graph = c.mutable.Graph
+
+  implicit final class ComparableGraph(g: Graph) {
+    def =~=(that: Graph): Boolean = {
+      if (!g.isConnected || !that.isConnected)
+        throw new IllegalArgumentException(
+          "given graphs must be connected")
+      (g.nodes.length == that.nodes.length) &&
+      (g.edges.length == that.edges.length)
+      // To do the traversal I must follow successors and predecessors
+    }
+  }
 
 
   // --- Nodes ---
@@ -47,14 +58,15 @@ object RewritingSystem {
     override def hashCode = name.hashCode
   }
 
-  implicit def strToNode(s: String) =
-    s count (_ == ':') match {
-      case 0 => Node(s, "")
-      case 1 => { val (name, label) = s span (_ != ':')
-                  Node(name, label.tail) }
-      case _ => throw new IllegalArgumentException(
-        "too many ':' in node string")
-    }
+  private val nodeRegex = "([^,:]*)(:[^,:]*)?".r
+
+  implicit def node(s: String) = s match {
+    case nodeRegex(name, null)  => Node(name, "")
+    case nodeRegex(name, label) => Node(name, label.tail)
+    case _ => throw new IllegalArgumentException("illegal string " +
+        "for a node: '" + s + "' doesn't conform to regex " +
+        nodeRegex)
+  }
 
 
   // --- (Multi-)Edges ---
@@ -65,9 +77,11 @@ object RewritingSystem {
     * @param label label of the edge.
     */
   class EqDiEdge[N](nodes: Product, override val label: Label)
-      extends DiEdge[N](nodes)
+      extends c.edge.LDiEdge[N](nodes)
          with EdgeCopy[EqDiEdge]
          with OuterEdge[N,EqDiEdge] {
+
+    type L1 = Label
 
     override def copy[N](newNodes: Product) =
       new EqDiEdge[N](newNodes, label)
@@ -80,6 +94,7 @@ object RewritingSystem {
     override def hashCode: Int = {
       val h = System.identityHashCode(this)
       (h << 1) - (h << 8) // for optimized hash distribution
+      // nodes.hashCode ^ label.hashCode
     }
 
     def matches(that: EdgeLike[_]): Boolean =
@@ -101,19 +116,27 @@ object RewritingSystem {
       "(" + super.nodesToString + ")"
   }
 
-  object EqDiEdge {
+  implicit object EqDiEdge extends c.edge.LBase.LEdgeCompanion[EqDiEdge] {
 
     val nodeSeparator = "~+>"
     
-    def apply(from: Node, to: Node, label: Label) =
-      new EqDiEdge[Node](NodeProduct(from, to), label)
+    def apply[N](from: N, to: N)(label: Label) =
+      new EqDiEdge[N](NodeProduct(from, to), label)
+
+    def apply[N](nodes: (N, N))(label: Label) =
+      new EqDiEdge[N](nodes, label)
+
+    def apply[N](nodes: Product)(label: Label) =
+      new EqDiEdge[N](nodes, label)
     
-    def unapply(e: EqDiEdge[Node]) = Some(e)
-    
-    // def apply[N](from: N, to: N, label: Label) =
-    //   new EqDiEdge[N](NodeProduct(from, to), label)
-    
-    // def unapply[N](e: EqDiEdge[N]) = Some(e)
+    def newEdge[N, L](nodes: Product, label: L) = label match {
+      // FIXME: How do you convince the compiler that EqDiEdge
+      // implements EdgeCopy and L1 = Label?
+      case l: Label => new EqDiEdge[N](nodes, l).asInstanceOf[
+        EqDiEdge[N] with EdgeCopy[EqDiEdge] { type L1 = L }]
+      case _ => throw new IllegalArgumentException(
+        "label type is not String")
+    }
   }
     
   // final implicit class NodeToEdge[N](n1: N) {
@@ -121,36 +144,135 @@ object RewritingSystem {
   // }
 
   final implicit class NodeToEdge(n1: Node) {
-    def ~+>(n2: Node)(label: Label) =
-      new EqDiEdge[Node]((n1, n2), label)
-
-    def ~>(n2: Node) =
-      new EqDiEdge[Node]((n1, n2), "")
+    def ~+>(n2: Node)(label: Label) = EqDiEdge(n1, n2)(label)
+    def ~>(n2: Node) = EqDiEdge(n1, n2)("")
   }
 
   final implicit class StringToEdge(s1: String) {
-    def ~+>(s2: String)(label: Label) =
-      new EqDiEdge[Node]((strToNode(s1), strToNode(s2)), label)
-
-    def ~>(s2: String) =
-      new EqDiEdge[Node]((strToNode(s1), strToNode(s2)), "")
+    val n1 = node(s1)
+    def ~+>(s2: String)(label: Label) = EqDiEdge(n1, node(s2))(label)
+    def ~>(s2: String) = EqDiEdge(n1, node(s2))("")
   }
 
   object :~> {
-    def unapply(e: EqDiEdge[Node]): Option[(Node, Node, Label)] =
+    def unapply[N](e: EqDiEdge[N]): Option[(N, N, Label)] =
       if (e eq null) None else Some((e._1, e._2, e.label))
-
-    // def unapply[N](e: EqDiEdge[N]): Option[(N, N, Label)] =
-    //   if (e eq null) None else Some((e._1, e._2, e.label))
   }
 
   object + {
-    def unapply(nl: (Node, Label)): Option[(Node, Label)] =
+    def unapply[N](nl: (N, Label)): Option[(N, Label)] =
       if (nl eq null) None else Some((nl._1, nl._2))
-
-    // def unapply[N](nl: (N,Label)): Option[(N,Label)] =
-    //   if (nl eq null) None else Some((nl._1, nl._2))
   }
+
+
+  // --- Arrows and spans ---
+
+  abstract class PartialInjection {
+
+    type Src <: Graph
+    type Tgt <: Graph
+
+    val dom: Src
+    val cod: Tgt
+
+    // TODO: vals or methods? better names?
+    val fn: Map[dom.NodeT, cod.NodeT]
+    val fe: Map[dom.EdgeT, cod.EdgeT]
+
+    def reverse = PartialInjection(cod, dom)(
+      fn map (_.swap), fe map (_.swap))
+
+    /** Check if this arrow is injective. */
+    def isInjective: Boolean =
+      fn.values.toSeq.combinations(2).forall { case Seq(n1, n2) => n1 != n2 } &&
+      fe.values.toSeq.combinations(2).forall { case Seq(e1, e2) => e1 != e2 }
+
+    /** Check if this arrow is structure-preserving. */
+    def isHomomorphic: Boolean =
+      fe.keys.forall(e =>
+        fn.isDefinedAt(e.source) &&
+        fn.isDefinedAt(e.target) &&
+        fn(e.source) == fe(e).source &&
+        fn(e.target) == fe(e).target)
+
+    /** Check if this arrow is total. */
+    def isTotal: Boolean =
+      dom.nodes.forall(fn.isDefinedAt(_)) &&
+      dom.edges.forall(fe.isDefinedAt(_))
+
+    // /** Check if this arrow is total. */
+    // def isValid: Boolean = isInjective && isHomomorphic
+
+    def apply(u: dom.NodeT): cod.NodeT = fn(u)
+    def apply(e: dom.EdgeT): cod.EdgeT = fe(e)
+
+    def className: String = "PartialInjection"
+
+    override def toString =
+      className + "(" + (fn mkString ", ") +
+      (if (fn.nonEmpty && fe.nonEmpty) ", " else "") +
+      (fe mkString ", ") + ")"
+  }
+
+  object PartialInjection {
+
+    def apply(from: Graph, to: Graph)(
+      nodeMap: Map[from.NodeT, to.NodeT],
+      edgeMap: Map[from.EdgeT, to.EdgeT]): PartialInjection = {
+      val p = new PartialInjection {
+        type Src = from.type
+        type Tgt = to.type
+        val dom: Src = from
+        val cod: Tgt = to
+        val fn = nodeMap
+        val fe = edgeMap
+      }
+      if (!p.isInjective) throw new IllegalArgumentException(
+        "given node or edge maps are not injective")
+      if (!p.isHomomorphic) throw new IllegalArgumentException(
+        "given node or edge maps are not structure-preserving")
+      p
+    }
+  }
+
+
+  abstract class Injection extends PartialInjection {
+
+    // /** Check if this arrow is monic and total. */
+    // override def isValid: Boolean =
+    //   isInjective && isHomomorphic && isTotal
+
+    override def className: String = "Match"
+  }
+
+  object Injection {
+    def apply(from: Graph, to: Graph)(
+      nodeMap: Map[from.NodeT, to.NodeT],
+      edgeMap: Map[from.EdgeT, to.EdgeT]): Injection = {
+      val m = new Injection {
+        type Src = from.type
+        type Tgt = to.type
+        val dom: Src = from
+        val cod: Tgt = to
+        val fn = nodeMap
+        val fe = edgeMap
+      }
+      if (!m.isInjective) throw new IllegalArgumentException(
+        "given node or edge maps are not injective")
+      if (!m.isHomomorphic) throw new IllegalArgumentException(
+        "given node or edge maps are not structure-preserving:\n" + from + "\n" + to + "\n" + nodeMap + "\n" + edgeMap)
+      if (!m.isTotal) throw new IllegalArgumentException(
+        "given node or edge maps are not total")
+      m
+    }
+  }
+
+
+  type Match = Injection
+  val  Match = Injection
+
+  val observables: Seq[Graph] = List()
+  val matches = Map[Graph, Seq[Match]]()
 
 
   // --- Intersections and Unions ---
@@ -186,7 +308,7 @@ object RewritingSystem {
 
       // create base graph
       val nodesOut = for ((n1, n2) <- ns) yield
-        strToNode(n1.name + "," + n2.name + ":" + n1.label)
+        Node(n1.name + "," + n2.name, n1.label)
       val g = Graph[Node,EqDiEdge](nodesOut:_*)
 
       // Set-product injections
@@ -197,14 +319,13 @@ object RewritingSystem {
       val seen1 = mutable.Set[g1.EdgeT]();
       val seen2 = mutable.Set[g2.EdgeT]();
       val edges: Seq[(Edge, g1.EdgeT, g2.EdgeT)] =
-        for {
-          u <- nodesOut;
-          v <- nodesOut;
-          e1 <- i1(u) outgoingTo i1(v);
-          e2 <- i2(u) outgoingTo i2(v);
-          if !seen1(e1) && !seen2(e2) && (e1 matches e2);
-          _ = seen1 += e1
-          _ = seen2 += e2
+        for { u <- nodesOut;
+              v <- nodesOut;
+              e1 <- i1(u) outgoingTo i1(v);
+              e2 <- i2(u) outgoingTo i2(v);
+              if !seen1(e1) && !seen2(e2) && (e1 matches e2);
+              _ = seen1 += e1
+              _ = seen2 += e2
         } yield ((u ~+> v)(e1.label), e1, e2)
 
       // add subsets of found edges to intersection
@@ -213,11 +334,14 @@ object RewritingSystem {
         // put the new and old edges apart
         val (edgesOut, g1edges, g2edges) = es.unzip3
         // graph with edges
-        val h: Graph = g ++ edgesOut
-        // inner nodes and edges
+        val h: Graph = g.clone
+        // add edges and get inner edges
+        val edgesIn: Seq[h.EdgeT] = for (e <- edgesOut) yield
+          h.addAndGetLEdge(e.source, e.target)(e.label)
+        // val edgesIn: Seq[h.EdgeT] =
+        //   pair(edgesOut, h)(h.edges.to[ArrayBuffer]) map (_._2)
+        // inner nodes
         val nodesIn: Seq[h.NodeT] = nodesOut map h.get
-        val edgesIn: Seq[h.EdgeT] =
-          pair(edgesOut, h)(h.edges.to[ArrayBuffer]) map (_._2)
         // node maps
         val fn1 = (nodesIn, g1nodes).zipped.toMap
         val fn2 = (nodesIn, g2nodes).zipped.toMap
@@ -231,20 +355,6 @@ object RewritingSystem {
     gs.flatten
   }
 
-  /** Pair outer and inner edges in a given graph using `=~=`. */
-  private def pair(edgesOut: Seq[Edge], g: Graph)(
-    edgesIn: ArrayBuffer[g.EdgeT]): Seq[(Edge, g.EdgeT)] =
-    edgesOut match {
-      case Seq() => if (edgesIn.isEmpty) List()
-                    else throw new IllegalArgumentException(
-                      "unpaired edges in " + edgesIn)
-      case e1 +: out => edgesIn find (_ =~= e1) match {
-        case Some(e2) => (e1, e2) +: pair(out, g)(edgesIn - e2)
-        case None => throw new IllegalArgumentException(
-          "edge " + e1 + " doesn't pair with any edge in " + edgesIn)
-      }
-    }
-
   /** Pick an element of each sequence non-deterministically. */
   private def cross[A](xss: Seq[Seq[A]], seen: Set[A] = Set[A]())
       : Seq[Seq[A]] = xss match {
@@ -255,190 +365,261 @@ object RewritingSystem {
   }
 
   /** Unions of subobjects of `g1` and `g2`. */
-  def unions(g1: Graph, g2: Graph) = //: Seq[(Graph, Match, Match)] =
-    for ((pb, m1, m2) <- intersections(g1, g2).take(2)) yield {
+  def unions(g1: Graph, g2: Graph): Seq[(Graph, Match, Match)] =
+    // This for shows that intersections and unions are in bijection
+    for ((pb,
+      m1: Match { type Src = pb.type; type Tgt = g1.type },
+      m2: Match { type Src = pb.type; type Tgt = g2.type }) <-
+        intersections(g1, g2)) yield {
 
-      println("pb: " + pb)
-      println("m1: " + m1)
-      println("m2: " + m2)
+      // create union
+      val po: Graph = pb.clone
+      val baseFn: Map[pb.NodeT, po.NodeT] =
+        (pb.nodes, pb.nodes map (po get _.value)).zipped.toMap
+      val baseFe: Seq[(pb.EdgeT, po.EdgeT)] =
+        pair(pb, po)(pb.edges.to[Seq], po.edges.to[ArrayBuffer])
 
-      // get missing nodes
+      // val reverse1 = m1.reverse
+      // val reverse2 = m2.reverse
+
+      // missing nodes in intersection
       val g1nodes = g1.nodes.toSeq diff m1.fn.values.toSeq
       val g2nodes = g2.nodes.toSeq diff m2.fn.values.toSeq
-      val n1out = for (n1 <- g1nodes) yield
-        n1.name + ",:" + n1.label
-      val n2out = for (n2 <- g2nodes) yield
-        "," + n2.name + ":" + n2.label
+      // create missing outer nodes
+      val n1out: Seq[Node] = for (n1 <- g1nodes) yield
+        Node(n1.name + ",", n1.label)
+      val n2out: Seq[Node] = for (n2 <- g2nodes) yield
+        Node("," + n2.name, n2.label)
+      // add them to the graph
+      po ++= (n1out ++ n2out)
+      // create the node maps
+      val fn1: Map[g1.NodeT, po.NodeT] =
+        // reverse1.fn.asInstanceOf[Map[g1.NodeT, po.NodeT]] ++
+        (for ((n0, n1) <- m1.fn) yield (n1, baseFn(n0))).toMap ++
+          (g1nodes, n1out map po.get).zipped.toMap
+      val fn2: Map[g2.NodeT, po.NodeT] =
+        // reverse2.fn.asInstanceOf[Map[g2.NodeT, po.NodeT]] ++
+        (for ((n0, n2) <- m2.fn) yield (n2, baseFn(n0))).toMap ++
+          (g2nodes, n2out map po.get).zipped.toMap
 
-      // get missing edges
+      // missing edges in intersection
       val g1edges = g1.edges.toSeq diff m1.fe.values.toSeq
       val g2edges = g2.edges.toSeq diff m2.fe.values.toSeq
-      println("g1edges: " + g1edges)
-      println("g2edges: " + g2edges)
-      // 4 types of outer edges we need: intersection^2, outside^2,
-      // intersection-outside, outside-intersection (can the last two
-      // be treated indifferently
-      // val e1out = for (e1 <- g1edges) yield ...
-      // val e2out = for (e2 <- g2edges) yield ...
+      // create missing outer edges
+      val e1out = for (e1 <- g1edges) yield
+        (fn1(e1.source).value ~+> fn1(e1.target).value)(e1.label)
+      val e2out = for (e2 <- g2edges) yield
+        (fn2(e2.source).value ~+> fn2(e2.target).value)(e2.label)
+      // add them to the graph and get inner edges
+      // po ++= (e1out ++ e2out)
+      val e1in: Seq[po.EdgeT] = for (e <- e1out) yield
+        po.addAndGetLEdge(e.source, e.target)(e.label)
+      // val e1in: Seq[po.EdgeT] =
+      //   pair(e1out, po)(po.edges.to[ArrayBuffer]) map (_._2)
+      val e2in: Seq[po.EdgeT] = for (e <- e2out) yield
+        po.addAndGetLEdge(e.source, e.target)(e.label)
+      // val e2in: Seq[po.EdgeT] =
+      //   pair(e2out, po)(po.edges.to[ArrayBuffer]) map (_._2)
+      // create the edge maps
+      val fe1: Map[g1.EdgeT, po.EdgeT] =
+        // reverse1.fe.asInstanceOf[Map[g1.EdgeT, po.EdgeT]] ++
+        // (pb.edges map m1.fe, po.edges).zipped.toMap ++
+        (for ((e0, e3) <- baseFe) yield (m1.fe(e0), e3)).toMap ++
+          (g1edges, e1in).zipped.toMap
+      val fe2: Map[g2.EdgeT, po.EdgeT] =
+        // reverse2.fe.asInstanceOf[Map[g2.EdgeT, po.EdgeT]] ++
+        // (pb.edges map m2.fe, po.edges).zipped.toMap ++
+        (for ((e0, e3) <- baseFe) yield (m2.fe(e0), e3)).toMap ++
+          (g2edges, e2in).zipped.toMap
 
-      // add missing nodes and edges (po for pushout)
-      val po = pb ++ n1out ++ n2out // ++ e1out ++ e2out
+      // TODO: I should put a test with intersections and unions
 
-      po
+      (po, Match(g1, po)(fn1, fe1), Match(g2, po)(fn2, fe2))
     }
 
-  def relevantLeftUnions(g: Graph, r: Rule): Seq[Graph] = {
-    List()
-  }
+  // NOTE: This is a new version of pair, look into the git history
+  // to find the old one that pairs outer with inner edges
+  /** Pair outer and inner edges in a given graph using `=~=`. */
+  def pair(g1: Graph, g2: Graph)(
+    edges1: Seq[g1.EdgeT],
+    edges2: ArrayBuffer[g2.EdgeT]): Seq[(g1.EdgeT, g2.EdgeT)] =
+    edges1 match {
+      case Seq() => List()
+      case e1 +: rest1 => edges2 find (_ =~= e1) match {
+        case Some(e2) => (e1, e2) +: pair(g1, g2)(rest1, edges2 - e2)
+        case None => throw new IllegalArgumentException(
+          "edge " + e1 + " doesn't pair with any edge in " + edges2)
+      }
+    }
 
-  def relevantRightUnions(g: Graph, r: Rule): Seq[Graph] = {
-    List()
-  }
+  // def relevantLeftUnions(g: Graph, r: Rule): Seq[Graph] = {
+  //   List()
+  // }
+
+  // def relevantRightUnions(g: Graph, r: Rule): Seq[Graph] = {
+  //   List()
+  // }
 
 
   // --- Fragmentation ---
 
+  // TODO: I'll need more sophisticated datatypes here to do
+  // simplification of terms.
   type Rate = Double
   type Prod = Seq[Graph]
   type Poly = Seq[(Rate, Prod)]
   type ODE = (Graph, Poly)
 
-  def fragmentation(observables: Seq[Graph], rules: Seq[Rule],
-    invariants: Graph => Graph = (x => x)): Seq[ODE] = {
+  def mfa(rules: Seq[Rule], observables: Seq[Graph],
+    invariants: Seq[Graph => Graph] = List()): Seq[ODE] = {
     List()
   }
 
 
-  // --- Arrows ---
-
-  abstract class MonicPartial {
-
-    val dom: Graph
-    val cod: Graph
-
-    val fn: Map[dom.NodeT, cod.NodeT]
-    val fe: Map[dom.EdgeT, cod.EdgeT]
-
-    /** Check if this arrow is monic. */
-    def isValid: Boolean =
-      fn.values.toSeq.combinations(2).forall { case Seq(n1, n2) => n1 != n2 } &&
-      fe.values.toSeq.combinations(2).forall { case Seq(e1, e2) => e1 != e2 }
-
-    def apply(u: dom.NodeT): cod.NodeT = fn(u)
-    def apply(e: dom.EdgeT): cod.EdgeT = fe(e)
-
-    def className: String = "MonicPartial"
-
-    override def toString =
-      className + "(" + (fn mkString ", ") +
-      (if (fn.nonEmpty && fe.nonEmpty) ", " else "") +
-      (fe mkString ", ") + ")"
-  }
-
-  object MonicPartial {
-    def apply(from: Graph, to: Graph)(
-      nodeMap: Map[from.NodeT, to.NodeT],
-      edgeMap: Map[from.EdgeT, to.EdgeT]) = new MonicPartial {
-      val dom = from
-      val cod = to
-      // val fn = (for ((n1,n2) <- nodeMap)
-      //           yield (dom.get(n1),
-      //                  cod.get(n2))).toMap
-      // val fe = (for ((e1,e2) <- edgeMap)
-      //           yield (dom.get(e1.toOuter),
-      //                  cod.get(e2.toOuter))).toMap
-      val fn = nodeMap.asInstanceOf[Map[dom.NodeT, cod.NodeT]]
-      val fe = edgeMap.asInstanceOf[Map[dom.EdgeT, cod.EdgeT]]
-
-      if (!isValid) throw new IllegalStateException(
-        "given node or edge maps are not injective")
-    }
-  }
-
-
-  abstract class MonicTotal extends MonicPartial {
-
-    /** Check if this arrow is monic and total. */
-    override def isValid: Boolean =
-      super.isValid && 
-      dom.nodes.forall(fn.isDefinedAt(_)) &&
-      dom.edges.forall(fe.isDefinedAt(_))
-
-    override def className: String = "Match"
-  }
-
-  object MonicTotal {
-    def apply(from: Graph, to: Graph)(
-      nodeMap: Map[from.NodeT, to.NodeT],
-      edgeMap: Map[from.EdgeT, to.EdgeT]) = new MonicTotal {
-      val dom = from
-      val cod = to
-      val fn = nodeMap.asInstanceOf[Map[dom.NodeT, cod.NodeT]]
-      val fe = edgeMap.asInstanceOf[Map[dom.EdgeT, cod.EdgeT]]
-
-      if (!isValid) throw new IllegalStateException(
-        "given node or edge maps are not total or injective")
-    }
-  }
-
-
-  type Match = MonicTotal
-  val  Match = MonicTotal
-
-  val observables: Seq[Graph] = List()
-  val matches = Map[Graph, Seq[Match]]()
-
-
-  // --- Actions ---
-
-  sealed abstract class Action {
-    def apply (m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT])
-  }
-
-  case class AddNode(node: Node) extends Action {
-    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
-      (List(), List())
-  }
-
-  case class DelNode(node: Node) extends Action {
-    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
-      (List(), List())
-  }
-
-  case class AddEdge(edge: Edge) extends Action {
-    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
-      (List(), List())
-  }
-
-  case class DelEdge(edge: Edge) extends Action {
-    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
-      (List(), List())
-  }
-
   // --- Rules ---
 
-  class Rule(l: Graph, r: Graph, val rate: Rate)
-      extends MonicPartial {
+  abstract class Rule extends PartialInjection {
 
-    val dom = l
-    val cod = r
+    val rate: Rate = 1.0
+
     @inline final def lhs: Graph = dom
     @inline final def rhs: Graph = cod
-    val fn = (dom.nodes, cod.nodes).zipped.toMap
-    val fe = (dom.edges, cod.edges).zipped.toMap
 
-    val actions : Seq[Action] = List()
+    def isAtomic: Boolean = false
+    @inline final def isComposite: Boolean = !isAtomic
 
     /** Rewrites the codomain of `m` according to this rule.
       *
+      * @param m match that defines where to apply the rule.
       * @return the collection of modified nodes and edges.
       */
-    def rewrite(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
-      collect(for (action <- actions) yield action(m))
+    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT])
 
-    def collect[A,B](xys: Seq[(Seq[A], Seq[B])]): (Seq[A], Seq[B]) =
+    override def className: String = "Rule"
+
+    override def toString = className + "(" + lhs + " -> " + rhs + ")"
+  }
+
+
+  // -- Atomic rules (a.k.a. actions) --
+
+  sealed abstract class AtomicRule extends Rule {
+    override def isAtomic = true
+  }
+
+  // TODO: I should make "1" and "2" vals of type Node
+  case class AddNode(node: Node) extends AtomicRule {
+    private val n1: Node = "1"
+    type Src = Graph
+    type Tgt = Graph
+    val dom = Graph[Node,EqDiEdge]()
+    val cod = Graph[Node,EqDiEdge](n1)
+    val fn = Map[dom.NodeT, cod.NodeT]()
+    val fe = Map[dom.EdgeT, cod.EdgeT]()
+    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
+      (List(), List())
+    override def reverse: AtomicRule = DelNode(node)
+  }
+
+  case class DelNode(node: Node) extends AtomicRule {
+    private val n1: Node = "1"
+    type Src = Graph
+    type Tgt = Graph
+    val dom = Graph[Node,EqDiEdge](n1)
+    val cod = Graph[Node,EqDiEdge]()
+    val fn = Map[dom.NodeT, cod.NodeT]()
+    val fe = Map[dom.EdgeT, cod.EdgeT]()
+    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
+      (List(), List())
+    override def reverse: AtomicRule = AddNode(node)
+  }
+
+  case class AddEdge(edge: Edge) extends AtomicRule {
+    private val n1: Node = "1"
+    private val n2: Node = "2"
+    type Src = Graph
+    type Tgt = Graph
+    val dom = Graph[Node,EqDiEdge](n1, n2)
+    val cod = Graph[Node,EqDiEdge](n1~>n2)
+    val fn = Map((dom get n1) -> (cod get n1),
+                 (dom get n2) -> (cod get n2))
+    val fe = Map[dom.EdgeT, cod.EdgeT]()
+    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
+      (List(), List())
+    override def reverse: AtomicRule = DelEdge(edge)
+  }
+
+  case class DelEdge(edge: Edge) extends AtomicRule {
+    private val n1: Node = "1"
+    private val n2: Node = "2"
+    type Src = Graph
+    type Tgt = Graph
+    val dom = Graph[Node,EqDiEdge](n1~>n2)
+    val cod = Graph[Node,EqDiEdge](n1, n2)
+    val fn = Map((dom get n1) -> (cod get n1),
+                 (dom get n2) -> (cod get n2))
+    val fe = Map[dom.EdgeT, cod.EdgeT]()
+    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
+      (List(), List())
+    override def reverse: AtomicRule = AddEdge(edge)
+  }
+
+
+  // -- Composite rules --
+
+  abstract class CompositeRule extends Rule {
+
+    /** Sequence of (atomic) rules that compose this rule. */
+    val subrules : Seq[Rule]
+
+    /** Rewrites the codomain of `m` according to this rule.
+      *
+      * @param m match that defines where to apply the rule.
+      * @return the collection of modified nodes and edges.
+      */
+    def apply(m: Match): (Seq[m.cod.NodeT], Seq[m.cod.EdgeT]) =
+      collect(for (r <- subrules) yield r(m))
+
+    private def collect[A, B](xys: Seq[(Seq[A], Seq[B])])
+        : (Seq[A], Seq[B]) =
       xys.foldLeft((List[A](), List[B]())) {
         case ((xs, ys), (xss, yss)) => (xs ++ xss, ys ++ yss) }
+
+    override def reverse: CompositeRule = Rule(cod, dom)(
+      fn map (_.swap), fe map (_.swap), rate)
+  }
+
+  object Rule {
+
+    def apply(lhs: Graph, rhs: Graph, k: Rate): CompositeRule =
+      apply(lhs, rhs)(
+        (lhs.nodes, rhs.nodes).zipped.toMap,
+        (lhs.edges, rhs.edges).zipped.toMap, k)
+
+    def apply(leftHandSide: Graph, rightHandSide: Graph)(
+      nodeMap: Map[leftHandSide.NodeT, rightHandSide.NodeT],
+      edgeMap: Map[leftHandSide.EdgeT, rightHandSide.EdgeT], k: Rate)
+        : CompositeRule = {
+      val r = new CompositeRule {
+        override val rate = k
+        type Src = leftHandSide.type
+        type Tgt = rightHandSide.type
+        val dom: Src = leftHandSide
+        val cod: Tgt = rightHandSide
+        val fn = nodeMap
+        val fe = edgeMap
+        val subrules = atomicRules(this)
+      }
+      if (!r.isInjective) throw new IllegalArgumentException(
+        "given node or edge maps are not injective")
+      if (!r.isHomomorphic) throw new IllegalArgumentException(
+        "given node or edge maps are not structure-preserving")
+      r
+    }
+
+    def atomicRules(r: Rule): Seq[AtomicRule] = {
+      List()
+    }
   }
 
   val rules: Seq[Rule] = List()
