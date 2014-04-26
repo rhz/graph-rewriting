@@ -338,8 +338,6 @@ object RewritingSystem {
         // add edges and get inner edges
         val edgesIn: Seq[h.EdgeT] = for (e <- edgesOut) yield
           h.addAndGetLEdge(e.source, e.target)(e.label)
-        // val edgesIn: Seq[h.EdgeT] =
-        //   pair(edgesOut, h)(h.edges.to[ArrayBuffer]) map (_._2)
         // inner nodes
         val nodesIn: Seq[h.NodeT] = nodesOut map h.get
         // node maps
@@ -379,9 +377,6 @@ object RewritingSystem {
       val baseFe: Seq[(pb.EdgeT, po.EdgeT)] =
         pair(pb, po)(pb.edges.to[Seq], po.edges.to[ArrayBuffer])
 
-      // val reverse1 = m1.reverse
-      // val reverse2 = m2.reverse
-
       // missing nodes in intersection
       val g1nodes = g1.nodes.toSeq diff m1.fn.values.toSeq
       val g2nodes = g2.nodes.toSeq diff m2.fn.values.toSeq
@@ -394,11 +389,9 @@ object RewritingSystem {
       po ++= (n1out ++ n2out)
       // create the node maps
       val fn1: Map[g1.NodeT, po.NodeT] =
-        // reverse1.fn.asInstanceOf[Map[g1.NodeT, po.NodeT]] ++
         (for ((n0, n1) <- m1.fn) yield (n1, baseFn(n0))).toMap ++
           (g1nodes, n1out map po.get).zipped.toMap
       val fn2: Map[g2.NodeT, po.NodeT] =
-        // reverse2.fn.asInstanceOf[Map[g2.NodeT, po.NodeT]] ++
         (for ((n0, n2) <- m2.fn) yield (n2, baseFn(n0))).toMap ++
           (g2nodes, n2out map po.get).zipped.toMap
 
@@ -411,35 +404,22 @@ object RewritingSystem {
       val e2out = for (e2 <- g2edges) yield
         (fn2(e2.source).value ~+> fn2(e2.target).value)(e2.label)
       // add them to the graph and get inner edges
-      // po ++= (e1out ++ e2out)
       val e1in: Seq[po.EdgeT] = for (e <- e1out) yield
         po.addAndGetLEdge(e.source, e.target)(e.label)
-      // val e1in: Seq[po.EdgeT] =
-      //   pair(e1out, po)(po.edges.to[ArrayBuffer]) map (_._2)
       val e2in: Seq[po.EdgeT] = for (e <- e2out) yield
         po.addAndGetLEdge(e.source, e.target)(e.label)
-      // val e2in: Seq[po.EdgeT] =
-      //   pair(e2out, po)(po.edges.to[ArrayBuffer]) map (_._2)
       // create the edge maps
       val fe1: Map[g1.EdgeT, po.EdgeT] =
-        // reverse1.fe.asInstanceOf[Map[g1.EdgeT, po.EdgeT]] ++
-        // (pb.edges map m1.fe, po.edges).zipped.toMap ++
         (for ((e0, e3) <- baseFe) yield (m1.fe(e0), e3)).toMap ++
           (g1edges, e1in).zipped.toMap
       val fe2: Map[g2.EdgeT, po.EdgeT] =
-        // reverse2.fe.asInstanceOf[Map[g2.EdgeT, po.EdgeT]] ++
-        // (pb.edges map m2.fe, po.edges).zipped.toMap ++
         (for ((e0, e3) <- baseFe) yield (m2.fe(e0), e3)).toMap ++
           (g2edges, e2in).zipped.toMap
-
-      // TODO: I should put a test with intersections and unions
 
       (po, Match(g1, po)(fn1, fe1), Match(g2, po)(fn2, fe2))
     }
 
-  // NOTE: This is a new version of pair, look into the git history
-  // to find the old one that pairs outer with inner edges
-  /** Pair outer and inner edges in a given graph using `=~=`. */
+  /** Pair inner edges in two graphs using `=~=`. */
   def pair(g1: Graph, g2: Graph)(
     edges1: Seq[g1.EdgeT],
     edges2: ArrayBuffer[g2.EdgeT]): Seq[(g1.EdgeT, g2.EdgeT)] =
