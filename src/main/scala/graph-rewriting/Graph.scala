@@ -2,6 +2,12 @@ package graph_rewriting
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+
+// This is needed because mutable.Map.keySet returns a collection.Set
+// and thus Node.edges has to be of this type.  Then the line
+// adjacency(n)(e) = (e.nodes - n) forces adjacency to be of type
+// mutable.Map[N, mutable.Map[E, collection.Set[N]]] and so it
+// propagates everywhere.
 import scala.collection.Set
 
 import utils._
@@ -378,7 +384,7 @@ object Graph {
     */
   // TODO: Check with: Graph(u1->u2,u1->u3,u1->u3) connectedIso
   // Graph(v1->v1,v1->v2,v1->v3) and injection
-  // PInj(u1->v1,u2->v2,u2->v3,u3->v1)
+  // Arrow(u1->v1,u2->v2,u2->v3,u3->v1)
   def connectedIso[N,NL,E<:DiEdgeLike[N],EL](
     g1: Graph[N,NL,E,EL], g2: Graph[N,NL,E,EL]): Boolean =
     (g1 eq g2) ||
@@ -438,9 +444,9 @@ object Graph {
   def findBijection[N,NL,E<:DiEdgeLike[N],EL](
     g1: Graph[N,NL,E,EL],
     g2: Graph[N,NL,E,EL])
-      : Option[PInj[N,E,N,E]] = {
+      : Option[Arrow[N,NL,E,EL,N,NL,E,EL]] = {
 
-    /** Tries to construct a total `PInj` from a partial one.
+    /** Tries to construct a total `Arrow` from a partial one.
       *
       * @param queue nodes that should be visited next, in order.
       * @param nodeMap partial injection on nodes that we are extending.
@@ -450,10 +456,10 @@ object Graph {
       */
     def extendBijection(queue: Seq[(N,N)], fn: Map[N,N], fe: Map[E,E],
       ns: Set[N], es: Set[E])
-        : Option[PInj[N,E,N,E]] =
+        : Option[Arrow[N,NL,E,EL,N,NL,E,EL]] =
       // If there's nothing else to visit, we stop and return the injection we found
       // TODO: Is "nothing else to visit" the same as "have visited everything"?
-      if (queue.isEmpty) Some(new PInj(fn, fe))
+      if (queue.isEmpty) Some(Arrow(g1, g2, fn, fe))
       else {
         val (u, v) = queue.head
         // println("u = " + u + ", v = " + v)
@@ -522,7 +528,7 @@ object Graph {
               }
 
               var finished = false
-              var result: Option[PInj[N,E,N,E]] = None
+              var result: Option[Arrow[N,NL,E,EL,N,NL,E,EL]] = None
               while (result.isEmpty && !finished) {
                 val nbs = (indices, edges).zipped map ((i, xs) => xs(i))
                 var mfn = fn
@@ -593,7 +599,7 @@ object Graph {
       }
 
     if (g1.nodes.size == 1 && g2.nodes.size == 1) {
-      Some(new PInj[N,E,N,E](Map(g1.nodes.head -> g2.nodes.head),
+      Some(Arrow(g1, g2, Map(g1.nodes.head -> g2.nodes.head),
         Map.empty[E,E]))
     } else {
       // map node labels to nodes
@@ -630,8 +636,8 @@ object Graph {
     g1: Graph[N1,NL,E1,EL],
     g2: Graph[N2,NL,E2,EL])
       : Seq[(Graph[String,NL,IdDiEdge[Int,String],EL],
-             PInj[String,IdDiEdge[Int,String],N1,E1],
-             PInj[String,IdDiEdge[Int,String],N2,E2])] = {
+             Arrow[String,NL,IdDiEdge[Int,String],EL,N1,NL,E1,EL],
+             Arrow[String,NL,IdDiEdge[Int,String],EL,N2,NL,E2,EL])] = {
 
     type N = String
     type E = IdDiEdge[Int, N]
@@ -716,7 +722,7 @@ object Graph {
           case (None, None) => ()
         }
         // create the matches
-        (h, new PInj(fn1, fe1), new PInj(fn2, fe2))
+        (h, Arrow(h, g1, fn1, fe1), Arrow(h, g2, fn2, fe2))
       }
     }).flatten
   }
@@ -727,8 +733,8 @@ object Graph {
     g1: Graph[N1,NL,E1,EL],
     g2: Graph[N2,NL,E2,EL])
       : Seq[(Graph[String,NL,IdDiEdge[Int,String],EL],
-             PInj[N1,E1,String,IdDiEdge[Int,String]],
-             PInj[N2,E2,String,IdDiEdge[Int,String]])] = {
+             Arrow[N1,NL,E1,EL,String,NL,IdDiEdge[Int,String],EL],
+             Arrow[N2,NL,E2,EL,String,NL,IdDiEdge[Int,String],EL])] = {
 
     type N = String
     type E = IdDiEdge[Int, N]
@@ -777,11 +783,11 @@ object Graph {
       for (e <- g2edges if g2.edgelabels contains e)
         po(fe2(e)).label = g2.edgelabels(e)
 
-      (po, new PInj(fn1, fe1), new PInj(fn2, fe2))
+      (po, Arrow(g1, po, fn1, fe1), Arrow(g2, po, fn2, fe2))
     }
   }
 
-  // def derivableRightUnions(r: Rule): Seq[(Graph[N,NL,E,EL], PInj[N,E], PInj[N,E])] = {
+  // def derivableRightUnions(r: Rule): Seq[(Graph[N,NL,E,EL], Arrow[N,E], Arrow[N,E])] = {
   //   val inv = r.reversed
   //   for {
   //     (pb, m1, m2) <- unions(g, r.cod)
@@ -794,11 +800,11 @@ object Graph {
   //   } yield i
   // }
 
-  // def relevantLeftUnions(r: Rule): Seq[Graph[N,NL,E,EL], PInj[N,E], PInj[N,E]] = {
+  // def relevantLeftUnions(r: Rule): Seq[Graph[N,NL,E,EL], Arrow[N,E], Arrow[N,E]] = {
   //   List()
   // }
 
-  // def relevantRightUnions(r: Rule): Seq[Graph[N,NL,E,EL], PInj[N,E], PInj[N,E]] = {
+  // def relevantRightUnions(r: Rule): Seq[Graph[N,NL,E,EL], Arrow[N,E], Arrow[N,E]] = {
   //   List()
   // }
 }

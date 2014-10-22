@@ -5,15 +5,15 @@ import scala.collection.mutable
 class Simulator[N,NL,E<:DiEdgeLike[N],EL] {
 
   type G = Graph[N,NL,E,EL]
+  type A = Arrow[N,NL,E,EL,N,NL,E,EL]
   type R = Rule[N,NL,E,EL]
-  type P = PInj[N,E,N,E]
   val rules: Seq[R] = List()
 
   // --- State ---
 
   type State = G
   val state: State = new Graph[N,NL,E,EL]
-  val matches = mutable.Map.empty[G, Seq[P]]
+  val matches = mutable.Map.empty[G, Seq[A]]
 
   var time: Double = 0.0
   var events: Long = 0
