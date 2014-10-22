@@ -47,6 +47,7 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     @inline def label: Option[NL] = nodelabels get n
     @inline def label_= (l: NL) = nodelabels(n) = l
     @inline def isLabelled: Boolean = nodelabels isDefinedAt n
+    @inline def unlabel: Unit = nodelabels -= n
     def edges: Set[E] = adjacency(n).keySet
     def neighbours: Set[N] = adjacency(n).values.flatten.toSet
     type Other = Graph[_,_,_,_]
@@ -86,6 +87,7 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     @inline def label: Option[EL] = edgelabels get e
     @inline def label_= (l: EL) = edgelabels(e) = l
     @inline def isLabelled: Boolean = edgelabels isDefinedAt e
+    @inline def unlabel: Unit = edgelabels -= e
     @inline def nodes: Set[N] = e.nodes
     def adjacents: Set[E] =
       for (n <- e.nodes; f <- graph(n).edges if e != f) yield f
@@ -125,12 +127,14 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
       }
       adjacency -= n
       nodes -= n
+      nodelabels -= n
     }
     this
   }
   def -= (e: E): this.type = {
     if (edges contains e) {
       edges -= e
+      edgelabels -= e
       for (n <- e.nodes)
         adjacency(n) -= e
     }

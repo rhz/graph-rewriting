@@ -163,6 +163,10 @@ class GraphSpec extends FlatSpec with Matchers {
     g -= 5
     g.nodes shouldBe empty
     g.edges shouldBe empty
+    g += 4
+    g(4).label = "a label"
+    g -= 4
+    g.nodelabels shouldBe empty
   }
 
   val e3 = DiEdge(5, 6)
@@ -180,6 +184,10 @@ class GraphSpec extends FlatSpec with Matchers {
     g -= e2
     g.edges shouldBe empty
     g.nodes shouldBe Set(4, 5)
+    g += e1
+    g(e1).label = "a label"
+    g -= e1
+    g.edgelabels shouldBe empty
   }
 
   it should "know the incoming and outgoing edges of its nodes" in {
