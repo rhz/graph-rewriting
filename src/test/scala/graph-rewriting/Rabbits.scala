@@ -3,7 +3,7 @@ package graph_rewriting
 import org.scalatest.{FlatSpec, Matchers}
 import implicits._
 
-class RabbitsSpec extends FlatSpec with Matchers {
+class Rabbits extends FlatSpec with Matchers {
 
   object mfa extends MFA[String,String]
 

@@ -3,7 +3,7 @@ package graph_rewriting
 import org.scalatest.{FlatSpec, Matchers}
 import implicits._
 
-class BimotorSpec extends FlatSpec with Matchers {
+class Bimotor extends FlatSpec with Matchers {
 
   "A bimotor" should "walk on DNA" in {
     val bc0 = "b" ~~> "c1"
