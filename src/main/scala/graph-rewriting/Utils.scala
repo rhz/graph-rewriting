@@ -13,15 +13,6 @@ object utils {
       } yield (y +: yss)
   }
 
-  // RHZ: I think this shouldn't exist.  It's easier to do
-  // val (xs, ys) = xys.unzip; (xs.flatten, ys.flatten)
-  /** Concatenate `Seq`s in pairs in the obvious way. */
-  def concatPairs[A, B](xys: Iterable[(Set[A], Set[B])])
-      : (Set[A], Set[B]) =
-    xys.foldRight((Set[A](), Set[B]())) {
-      case ((xs, ys), (xss, yss)) => (xs ++: xss, ys ++: yss) }
-
-
   /** Implicit class transforming `Function1`s that return `Option`
     * into `PartialFunction`s.
     */
