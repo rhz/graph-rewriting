@@ -13,7 +13,11 @@ trait Action[N,NL,E<:DiEdgeLike[N],EL]
   @inline final def cod = rhs
 
   /** In-place modification of the codomain of `m`. */
-  def apply(m: Match): (Match, Set[N], Set[E])
+  def apply(m: Match, addedNodes: Map[N,N]): (Match, Map[N,N], Set[N], Set[E])
+  def apply(m: Match): (Match, Set[N], Set[E]) = {
+    val (comatch, _, modNodes, modEdges) = apply(m, Map())
+    (comatch, modNodes, modEdges)
+  }
 
   def reversed: Action[N,NL,E,EL]
 
@@ -21,6 +25,8 @@ trait Action[N,NL,E<:DiEdgeLike[N],EL]
     m.n collect { case (u, v) if n contains u => (n(u), v) },
     m.e collect { case (x, y) if e contains x => (e(x), y) })
 }
+
+// --- Atomic actions ---
 
 sealed abstract class AtomicAction[N,NL,E<:DiEdgeLike[N],EL]
     extends Action[N,NL,E,EL]
@@ -35,16 +41,15 @@ case class AddNode[N,NL,E<:DiEdgeLike[N],EL](
   implicit val newNode: Graph[N,_,_,_] => N)
     extends AtomicAction[N,NL,E,EL] {
   val label: Option[NL] = rhs(nodeRhs).label
-  override def apply(m: Match): (Match, Set[N], Set[E]) = {
-    // TODO: When adding a node I should add all edges to/from it as
-    // well, but how do I do it with edges between new nodes?
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) = {
     val n = newNode(m.cod)
     m.cod += n
     for (l <- label) m.cod(n).label = l
-    // FIXME: Ugly... it should say transport(m) + (nodeRhs -> n)
-    (transport(m) + (nodeRhs, n), Set(n), Set())
+    (transport(m) + (nodeRhs, n),
+     addedNodes + (nodeRhs -> n), Set(n), Set())
   }
-  override def reversed = DelNode(rhs, lhs,
+  def reversed = DelNode(rhs, lhs,
     n.inverse, e.inverse, nodeRhs)(newNode)
 }
 
@@ -56,14 +61,15 @@ case class DelNode[N,NL,E<:DiEdgeLike[N],EL](
   val nodeLhs: N)(
   implicit val newNode: Graph[N,_,_,_] => N)
     extends AtomicAction[N,NL,E,EL] {
-  override def apply(m: Match): (Match, Set[N], Set[E]) = {
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) = {
     val n = m(nodeLhs)
     val edges = m.cod(n).edges
     m.cod -= n
-    // TODO: Maybe `apply` return a collection.Set instead
-    (transport(m), Set(n), edges.toSet)
+    // Should `apply` return a collection.Set instead?
+    (transport(m), addedNodes, Set(n), edges.toSet)
   }
-  override def reversed = AddNode(rhs, lhs,
+  def reversed = AddNode(rhs, lhs,
     n.inverse, e.inverse, nodeLhs)(newNode)
 }
 
@@ -76,20 +82,20 @@ case class SetNodeLabel[N,NL,E<:DiEdgeLike[N],EL](
     extends AtomicAction[N,NL,E,EL] {
   val nodeRhs = n(nodeLhs)
   val label: Option[NL] = rhs(nodeRhs).label
-  override def apply(m: Match): (Match, Set[N], Set[E]) = {
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) = {
     val n = m(nodeLhs)
     label match {
       case Some(l) => m.cod(n).label = l
       case None => m.cod(n).unlabel
     }
-    (transport(m), Set(n), Set())
+    (transport(m), addedNodes, Set(n), Set())
   }
-  override def reversed = SetNodeLabel(rhs, lhs,
+  def reversed = SetNodeLabel(rhs, lhs,
     n.inverse, e.inverse, nodeRhs)
 }
 
 
-// This is only for edges between old nodes
 case class AddEdge[N,NL,E<:DiEdgeLike[N],EL](
   val lhs: Graph[N,NL,E,EL],
   val rhs: Graph[N,NL,E,EL],
@@ -101,20 +107,25 @@ case class AddEdge[N,NL,E<:DiEdgeLike[N],EL](
   val ninv = n.inverse
   val sourceRhs: N = edgeRhs.source
   val targetRhs: N = edgeRhs.target
-  val sourceLhs: N = ninv(sourceRhs)
-  val targetLhs: N = ninv(targetRhs)
   val label: Option[EL] = rhs(edgeRhs).label
-  override def apply(m: Match): (Match, Set[N], Set[E]) = {
-    // TODO: One way to solve the to/from/bw-new-nodes issue would be
-    // to "thread" a map from rhs' nodes to new nodes in the mixture
-    val s = m(sourceLhs)
-    val t = m(targetLhs)
+  def inMatch(m1: Match, m2: Map[N,N], n: N) = ninv get n match {
+    case Some(u) => m1(u)
+    case None => m2 get n match {
+      case Some(u) => u
+      case None => throw new IllegalArgumentException(
+        s"can't find node $n in $m1 nor $m2")
+    }
+  }
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) = {
+    val s = inMatch(m, addedNodes, sourceRhs)
+    val t = inMatch(m, addedNodes, targetRhs)
     val x = newEdge(m.cod, s, t)
     m.cod += x
     for (l <- label) m.cod(x).label = l
-    (transport(m) + (edgeRhs, x), Set(s, t), Set(x))
+    (transport(m) + (edgeRhs, x), addedNodes, Set(s, t), Set(x))
   }
-  override def reversed = DelEdge(rhs, lhs, ninv, e.inverse, edgeRhs)
+  def reversed = DelEdge(rhs, lhs, ninv, e.inverse, edgeRhs)
 }
 
 case class DelEdge[N,NL,E<:DiEdgeLike[N],EL](
@@ -125,12 +136,13 @@ case class DelEdge[N,NL,E<:DiEdgeLike[N],EL](
   val edgeLhs: E)(
   implicit val newEdge: (Graph[N,_,E,_], N, N) => E)
     extends AtomicAction[N,NL,E,EL] {
-  override def apply(m: Match): (Match, Set[N], Set[E]) = {
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) = {
     val x = m(edgeLhs)
     m.cod -= x
-    (transport(m), Set(), Set(x))
+    (transport(m), addedNodes, Set(), Set(x))
   }
-  override def reversed = AddEdge(rhs, lhs,
+  def reversed = AddEdge(rhs, lhs,
     n.inverse, e.inverse, edgeLhs)
 }
 
@@ -143,43 +155,21 @@ case class SetEdgeLabel[N,NL,E<:DiEdgeLike[N],EL](
     extends AtomicAction[N,NL,E,EL] {
   val edgeRhs: E = e(edgeLhs)
   val label: Option[EL] = rhs(edgeRhs).label
-  override def apply(m: Match): (Match, Set[N], Set[E]) = {
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) = {
     val x = m(edgeLhs)
     label match {
       case Some(l) => m.cod(x).label = l
       case None => m.cod(x).unlabel
     }
-    (transport(m), Set(), Set(x))
+    (transport(m), addedNodes, Set(), Set(x))
   }
-  override def reversed = SetEdgeLabel(rhs, lhs,
+  def reversed = SetEdgeLabel(rhs, lhs,
     n.inverse, e.inverse, edgeRhs)
 }
 
 
-/*
-case class AddEdgeToNewNode[N,NL,E<:DiEdgeLike[N],EL](
-  val lhs: Graph[N,NL,E,EL],
-  val rhs: Graph[N,NL,E,EL],
-  val n: Map[N,N],
-  val e: Map[E,E],
-  val edge: E)
-    extends AtomicAction[N,NL,E,EL] {
-  override def apply(m: Match): (Match, Set[N], Set[E]) = ???
-  override def reversed = ???
-}
-
-case class AddEdgeFromNewNode[N,NL,E<:DiEdgeLike[N],EL](
-  val lhs: Graph[N,NL,E,EL],
-  val rhs: Graph[N,NL,E,EL],
-  val n: Map[N,N],
-  val e: Map[E,E],
-  val edge: E)
-    extends AtomicAction[N,NL,E,EL] {
-  override def apply(m: Match): (Match, Set[N], Set[E]) = ???
-  override def reversed = ???
-}
-*/
-
+// --- Rules ---
 
 case class Rule[N,NL,E<:DiEdgeLike[N],EL](
   val lhs: Graph[N,NL,E,EL],
@@ -208,15 +198,22 @@ case class Rule[N,NL,E<:DiEdgeLike[N],EL](
                    yield SetEdgeLabel(lhs, rhs, n, e, x)
     addNodes.toSeq ++ delNodes ++ setNodes ++ addEdges ++ delEdges ++ setEdges
   }
-  def apply(m: Match): (Match, Set[N], Set[E]) =
-    actions map (_(m)) reduceLeft ((x, y) => {
-      val (cm1, n1, e1) = x
-      val (cm2, n2, e2) = y
-      (cm1 + cm2, n1 ++ n2, e1 ++ e2)
-    })
-  def reversed = Rule(rhs, lhs, n.inverse, e.inverse)
+  def apply(m: Match, addedNodes: Map[N,N])
+      : (Match, Map[N,N], Set[N], Set[E]) =
+    actions.foldLeft((Arrow(rhs, m.cod, Map(), Map()), Map.empty[N,N],
+      Set.empty[N], Set.empty[E])) ({
+        case ((cm1, an1, n1, e1), action) => {
+          val (cm2, an2, n2, e2) = action(m, an1)
+          (cm1 + cm2, an1 ++ an2, n1 ++ n2, e1 ++ e2)
+        }
+      })
+  def reversed = Rule(rhs, lhs, n.inverse, e.inverse, rate)
 }
 
-// TODO: Create a constructor that infers `n` and `e` assuming that
-// the interface is a subset of both `lhs` and `rhs`.
+object Rule {
+  // TODO: Creates a `Rule` with `n` and `e` given
+  // by all common nodes and edges in `lhs` and `rhs`.
+  def apply[N,NL,E<:DiEdgeLike[N],EL](
+    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL]) = ???
+}
 
