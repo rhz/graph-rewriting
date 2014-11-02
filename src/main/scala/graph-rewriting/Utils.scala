@@ -53,13 +53,13 @@ object utils {
   }
 
   class Counter private (private var i: Int) {
-    def apply(): Int = {
+    def next: Int = {
       val j = i
       i += 1
       j
     }
   }
-  object Counter {
+  object Counter extends Counter(0) {
     def apply() = new Counter(0)
     def apply(i: Int) = new Counter(i)
   }
