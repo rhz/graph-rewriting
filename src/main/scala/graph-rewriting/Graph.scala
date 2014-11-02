@@ -307,59 +307,6 @@ object Graph {
 
   // --- Constructors ---
 
-  // def apply[N,NL,E<:EdgeLike[N],EL]() = new Graph[N,NL,E,EL]
-
-  // def apply[N,NL,E<:EdgeLike[N],EL](nodes: Traversable[N]) = {
-  //   val g = new Graph[N,NL,E,EL]
-  //   g.addNodes(nodes)
-  //   g
-  // }
-  // def apply[N,NL,E<:EdgeLike[N],EL](n1: N, nodes: N*)
-  //     : Graph[N,NL,E,EL] = Graph[N,NL,E,EL](n1 +: nodes)
-
-  // def apply[N,NL,E<:EdgeLike[N],EL](
-  //   nodes: Traversable[N],
-  //   edges: Traversable[E]): Graph[N,NL,E,EL] = {
-  //   val g = Graph[N,NL,E,EL](nodes)
-  //   g.addEdges(edges)
-  //   g
-  // }
-  // def apply[N,NL,E<:EdgeLike[N],EL](n1: N, nodes: N*)(e1: E, edges: E*)
-  //     : Graph[N,NL,E,EL] = Graph[N,NL,E,EL](n1 +: nodes, e1 +: edges)
-
-  // def apply[N,NL,E<:EdgeLike[N],EL](edges: E*)
-  //     : Graph[N,NL,E,EL] = {
-  //   val g = new Graph[N,NL,E,EL]
-  //   g.addEdges(edges)
-  // }
-
-  def apply[N,NL,E<:EdgeLike[N],EL](nodes: N*)(edges: E*)
-      : Graph[N,NL,E,EL] = {
-    val g = new Graph[N,NL,E,EL]
-    g.addNodes(nodes)
-    g.addEdges(edges)
-  }
-
-  /*
-  def apply[N,NL,E<:EdgeLike[N],EL](
-    nodes: Traversable[N],
-    edges: Traversable[E],
-    nodelabels: Traversable[(N, NL)]): Graph[N,NL,E,EL] = {
-    val g = Graph[N,NL,E,EL](nodes, edges)
-    for ((n, l) <- nodelabels) g(n).label = l
-    g
-  }
-
-  def apply[N,NL,E<:EdgeLike[N],EL](
-    nodes: Traversable[N],
-    edges: Traversable[E],
-    edgelabels: Traversable[(E, EL)]): Graph[N,NL,E,EL] = {
-    val g = Graph[N,NL,E,EL](nodes, edges)
-    for ((e, l) <- edgelabels) g(e).label = l
-    g
-  }
-  */
-
   def apply[N,NL,E<:EdgeLike[N],EL](
     nodes: Traversable[N],
     nodelabels: Traversable[(N, NL)],
@@ -372,6 +319,16 @@ object Graph {
     for ((e, l) <- edgelabels) g(e).label = l
     g
   }
+
+  def apply[N,NL](nodes: (N,NL)*)(edges: IdDiEdge[Int,N]*)
+      : Graph[N,NL,IdDiEdge[Int,N],String] =
+    Graph[N,NL,IdDiEdge[Int,N],String](
+      nodes map (_._1), nodes, edges, List())
+
+  def apply[N](n1: N, nodes: N*)(edges: IdDiEdge[Int,N]*)
+      : Graph[N,String,IdDiEdge[Int,N],String] =
+    Graph[N,String,IdDiEdge[Int,N],String](
+      n1 +: nodes, List(), edges, List())
 
   // --- Isomorphisms ---
 
