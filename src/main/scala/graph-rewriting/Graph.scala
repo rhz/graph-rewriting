@@ -258,10 +258,19 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     */
   def inducedSubgraph(ns: Set[N]): Graph[N,NL,E,EL] = {
     val g = new Graph[N,NL,E,EL]
-    for (n <- ns) g += n
-    for (e <- edges if e.nodes forall (ns contains _)) g += e
+    for (n <- ns) {
+      g += n
+      if (nodelabels isDefinedAt n)
+        g(n).label = nodelabels(n)
+    }
+    for (e <- edges if e.nodes forall (ns contains _)) {
+      g += e
+      if (edgelabels isDefinedAt e)
+        g(e).label = edgelabels(e)
+    }
     g
   }
+
   def inducedSubgraph(n: N, ns: N*): Graph[N,NL,E,EL] =
     inducedSubgraph(Set(n) ++ ns)
 
