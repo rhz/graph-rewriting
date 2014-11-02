@@ -569,8 +569,10 @@ object Graph {
       }
 
     if (g1.nodes.size == 1 && g2.nodes.size == 1) {
-      Some(Arrow(g1, g2, Map(g1.nodes.head -> g2.nodes.head),
-        Map.empty[E,E]))
+      if (g1(g1.nodes.head).label == g2(g2.nodes.head).label)
+        Some(Arrow(g1, g2, Map(g1.nodes.head -> g2.nodes.head),
+          Map.empty[E,E]))
+      else None
     } else {
       // map node labels to nodes
       val domNodesByLabel = g1.nodes groupBy (g1(_).label)
