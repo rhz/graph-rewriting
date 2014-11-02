@@ -11,6 +11,7 @@ import scala.collection.mutable
 import scala.collection.Set
 
 import utils._
+import implicits._
 
 class Graph[N,NL,E<:EdgeLike[N],EL] {
   graph =>
@@ -25,8 +26,8 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     val g = new Graph[N,NL,E,EL]
     g.addNodes(nodes)
     g.addEdges(edges)
-    for (n <- nodes if nodelabels contains n) g(n).label = nodelabels(n)
-    for (e <- edges if edgelabels contains e) g(e).label = edgelabels(e)
+    for ((n, l) <- nodelabels) g(n).label = l
+    for ((e, l) <- edgelabels) g(e).label = l
     g
   }
 
@@ -623,6 +624,8 @@ object Graph {
         g1(u) matches g2(v)))).zipped.toMap
     // TODO: What if g1(u) matches g2(v) but not the opposite?
 
+    // TODO: Calling `cross` is unnecessarily slow and might blow up
+    // the memory.
     // all possible node intersections
     val nodeIntersections: Seq[Seq[Seq[(N1, N2)]]] =
       for (i <- 0 to g1nodes.length;
@@ -670,7 +673,7 @@ object Graph {
               if !seen1(e1) && !seen2(e2) && (g1(e1) matches g2(e2));
               _ = seen1 += e1
               _ = seen2 += e2
-        } yield (IdDiEdge(cnt(), u, v), e1, e2)
+        } yield (IdDiEdge(cnt.next, u, v), e1, e2)
 
       // add subsets of found edges to intersection
       for (i <- 0 to edges.length;
@@ -717,16 +720,17 @@ object Graph {
       val po: Graph[N,NL,E,EL] = pb.copy
 
       // missing nodes in intersection
-      val g1nodes: Seq[N1] = (g1.nodes -- f1.n.values).toSeq
-      val g2nodes: Seq[N2] = (g2.nodes -- f2.n.values).toSeq
-      // create missing outer nodes
-      val n1s: Seq[N] = for (u <- g1nodes) yield "("  + u + ",)"
-      val n2s: Seq[N] = for (v <- g2nodes) yield "(," + v +  ")"
+      // transform the to `Seq`s to guarantee ordering for zipping
+      val g1nodes = (g1.nodes -- f1.n.values).toSeq
+      val g2nodes = (g2.nodes -- f2.n.values).toSeq
+      // create missing nodes
+      val n1s = for (u <- g1nodes) yield "("  + u + ",)"
+      val n2s = for (v <- g2nodes) yield "(," + v +  ")"
       // add them to the graph
       po.addNodes(n1s ++ n2s)
       // create the node maps
-      val fn1: Map[N1, N] = f1.n.map(_.swap) ++ (g1nodes, n1s).zipped.toMap
-      val fn2: Map[N2, N] = f2.n.map(_.swap) ++ (g2nodes, n2s).zipped.toMap
+      val fn1: Map[N1, N] = f1.n.inverse ++ (g1nodes, n1s).zipped.toMap
+      val fn2: Map[N2, N] = f2.n.inverse ++ (g2nodes, n2s).zipped.toMap
       // add node labels
       for (n <- g1nodes if g1.nodelabels contains n)
         po(fn1(n)).label = g1.nodelabels(n)
@@ -734,21 +738,21 @@ object Graph {
         po(fn2(n)).label = g2.nodelabels(n)
 
       // missing edges in intersection
-      val g1edges = g1.edges -- f1.e.values
-      val g2edges = g2.edges -- f2.e.values
+      val g1edges = (g1.edges -- f1.e.values).toSeq
+      val g2edges = (g2.edges -- f2.e.values).toSeq
       // create missing outer edges
       val maxEdgeId = ((for (IdDiEdge(id, _, _) <- pb.edges)
                         yield id) + 0).max
-      val cnt = Counter(maxEdgeId)
+      val cnt = Counter(maxEdgeId + 1)
       val e1s = for (e1 <- g1edges) yield
-        IdDiEdge(cnt(), fn1(e1.source), fn1(e1.target))
+        IdDiEdge(cnt.next, fn1(e1.source), fn1(e1.target))
       val e2s = for (e2 <- g2edges) yield
-        IdDiEdge(cnt(), fn2(e2.source), fn2(e2.target))
+        IdDiEdge(cnt.next, fn2(e2.source), fn2(e2.target))
       // add them to the graph
       po.addEdges(e1s ++ e2s)
       // create the edge maps
-      val fe1: Map[E1, E] = f1.e.map(_.swap) ++ (g1edges, e1s).zipped.toMap
-      val fe2: Map[E2, E] = f2.e.map(_.swap) ++ (g2edges, e2s).zipped.toMap
+      val fe1: Map[E1, E] = f1.e.inverse ++ (g1edges, e1s).zipped.toMap
+      val fe2: Map[E2, E] = f2.e.inverse ++ (g2edges, e2s).zipped.toMap
       // add edge labels
       for (e <- g1edges if g1.edgelabels contains e)
         po(fe1(e)).label = g1.edgelabels(e)
