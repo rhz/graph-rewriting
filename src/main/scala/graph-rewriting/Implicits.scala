@@ -1,5 +1,7 @@
 package graph_rewriting
 
+import utils.Counter
+
 object implicits {
 
   // -- Nodes --
@@ -18,6 +20,10 @@ object implicits {
     def ~> (n2: N) = DiEdge(n1, n2)
   }
 
+  implicit class IdDiEdgeConst[N](n1: N) {
+    def ~~> (n2: N) = IdDiEdge(Counter.next, n1, n2)
+  }
+
   implicit def newIdDiEdge[N](g: Graph[N,_,IdDiEdge[Int,N],_],
     u: N, v: N) = new IdDiEdge(next(g(u) outgoingTo v map {
       case IdDiEdge(id,_,_) => id }), u, v)
@@ -27,5 +33,20 @@ object implicits {
     def inverse = m map (_.swap)
   }
 
+  // -- Polynomials --
+  implicit def numToMn[N,NL,E<:DiEdgeLike[N],EL](n: Double) =
+    Mn[N,NL,E,EL](n)
+  implicit def graphToMn[N,NL,E<:DiEdgeLike[N],EL](
+    g: Graph[N,NL,E,EL]) = Mn[N,NL,E,EL](g)
+  // implicit def numToPn[N,NL,E<:DiEdgeLike[N],EL](n: Double) =
+  //   Pn[N,NL,E,EL](Mn[N,NL,E,EL](n))
+  // implicit def graphToPn[N,NL,E<:DiEdgeLike[N],EL](
+  //   g: Graph[N,NL,E,EL]) = Pn[N,NL,E,EL](Mn(g))
+  implicit def mnToPn[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
+    Pn[N,NL,E,EL](m)
+
+  // -- Eqs --
+  implicit def eqsToEqs[N,NL,E<:DiEdgeLike[N],EL](
+    eqs: Traversable[Eq[N,NL,E,EL]]) = new Eqs(eqs)
 }
 
