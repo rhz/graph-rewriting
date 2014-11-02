@@ -1,27 +1,17 @@
 package graph_rewriting
 
 import org.scalatest.{FlatSpec, Matchers}
-import scala.collection.{mutable => m}
 import implicits._
 
 class RuleSpec extends FlatSpec with Matchers {
 
-  def G[N,NL](nodes: (N,NL)*)(edges: IdDiEdge[Int,N]*) =
-    Graph[N,NL,IdDiEdge[Int,N],String](
-      nodes map (_._1), nodes, edges, List())
-
-  val cnt = utils.Counter()
-  implicit class IdDiEdgeConst[N](n1: N) {
-    def ~~> (n2: N) = IdDiEdge(cnt(), n1, n2)
-  }
-
   // -- Nodes --
 
   "An AddNode action" should "apply to a match" in {
-    val lhs = G(1 -> "A")()
-    val rhs = G(1 -> "A", 2 -> "A")()
+    val lhs = Graph(1 -> "A")()
+    val rhs = Graph(1 -> "A", 2 -> "A")()
     val action = AddNode(lhs, rhs, Map(1 -> 1), Map(), 2)
-    val mix = G(1 -> "A", 2 -> "B")(1 ~~> 2)
+    val mix = Graph(1 -> "A", 2 -> "B")(1 ~~> 2)
     val m = Arrow(lhs, mix, Map(1 -> 1), Map())
     val (comatch, modNodes, modEdges) = action(m)
     mix.nodes shouldBe Set(1, 2, 3)
@@ -35,8 +25,8 @@ class RuleSpec extends FlatSpec with Matchers {
   }
 
   it should "be reversible" in {
-    val lhs = G(1 -> "A")()
-    val rhs = G(1 -> "A", 2 -> "A")()
+    val lhs = Graph(1 -> "A")()
+    val rhs = Graph(1 -> "A", 2 -> "A")()
     val action = AddNode(lhs, rhs, Map(1 -> 2), Map(), 1)
     val inv = action.reversed
     inv shouldBe a [DelNode[_,_,_,_]]
@@ -49,11 +39,11 @@ class RuleSpec extends FlatSpec with Matchers {
 
 
   "An DelNode action" should "apply to a match" in {
-    val lhs = G(1 -> "A", 2 -> "A")()
-    val rhs = G(1 -> "A")()
+    val lhs = Graph(1 -> "A", 2 -> "A")()
+    val rhs = Graph(1 -> "A")()
     val action = DelNode(lhs, rhs, Map(1 -> 1), Map(), 2)
     val (e1, e2) = (3 ~~> 2, 2 ~~> 3)
-    val mix = G(1 -> "A", 2 -> "B", 3 -> "A")(e1, e2)
+    val mix = Graph(1 -> "A", 2 -> "B", 3 -> "A")(e1, e2)
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 3), Map())
     val (comatch, modNodes, modEdges) = action(m)
     mix.nodes shouldBe Set(1, 2)
@@ -67,8 +57,8 @@ class RuleSpec extends FlatSpec with Matchers {
   }
 
   it should "be reversible" in {
-    val rhs = G(1 -> "A", 2 -> "A")()
-    val lhs = G(1 -> "A")()
+    val rhs = Graph(1 -> "A", 2 -> "A")()
+    val lhs = Graph(1 -> "A")()
     val action = DelNode(lhs, rhs, Map(2 -> 1), Map(), 1)
     val inv = action.reversed
     inv shouldBe a [AddNode[_,_,_,_]]
@@ -83,15 +73,15 @@ class RuleSpec extends FlatSpec with Matchers {
   "An SetNodeLabel action" should "apply to a match" in {
     val edgeLhs = 1 ~~> 2
     val edgeRhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A")(edgeLhs)
-    val rhs = G(1 -> "B", 2 -> "A")(edgeRhs)
+    val lhs = Graph(1 -> "A", 2 -> "A")(edgeLhs)
+    val rhs = Graph(1 -> "B", 2 -> "A")(edgeRhs)
     // The crossing in the node map makes everything too complicated
     // I made it so to check that the comatch is produced correctly
     // by mapping the match through the action's node map.
     val action = SetNodeLabel(lhs, rhs, Map(1 -> 2, 2 -> 1),
       Map(edgeLhs -> edgeRhs), 2)
     val edgeMix = 1 ~~> 2
-    val mix = G(1 -> "A", 2 -> "A", 3 -> "B")(edgeMix)
+    val mix = Graph(1 -> "A", 2 -> "A", 3 -> "B")(edgeMix)
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 2), Map(edgeLhs -> edgeMix))
     val (comatch, modNodes, modEdges) = action(m)
     mix.nodes shouldBe Set(1, 2, 3)
@@ -110,8 +100,8 @@ class RuleSpec extends FlatSpec with Matchers {
   it should "be reversible" in {
     val edgeLhs = 1 ~~> 2
     val edgeRhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A")(edgeLhs)
-    val rhs = G(1 -> "B", 2 -> "A")(edgeRhs)
+    val lhs = Graph(1 -> "A", 2 -> "A")(edgeLhs)
+    val rhs = Graph(1 -> "B", 2 -> "A")(edgeRhs)
     val action = SetNodeLabel(lhs, rhs, Map(1 -> 1, 2 -> 2),
       Map(edgeLhs -> edgeRhs), 1)
     val inv = action.reversed
@@ -128,10 +118,10 @@ class RuleSpec extends FlatSpec with Matchers {
 
   "An AddEdge action" should "apply to a match" in {
     val edgeRhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "B")()
-    val rhs = G(1 -> "A", 2 -> "B")(edgeRhs)
+    val lhs = Graph(1 -> "A", 2 -> "B")()
+    val rhs = Graph(1 -> "A", 2 -> "B")(edgeRhs)
     val action = AddEdge(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(), edgeRhs)
-    val mix = G(1 -> "A", 2 -> "B")()
+    val mix = Graph(1 -> "A", 2 -> "B")()
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 2), Map())
     val (comatch, modNodes, modEdges) = action(m)
     val edgeMix = IdDiEdge(0, 1, 2)
@@ -147,8 +137,8 @@ class RuleSpec extends FlatSpec with Matchers {
 
   it should "be reversible" in {
     val edgeRhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "B")()
-    val rhs = G(1 -> "A", 2 -> "B")(edgeRhs)
+    val lhs = Graph(1 -> "A", 2 -> "B")()
+    val rhs = Graph(1 -> "A", 2 -> "B")(edgeRhs)
     val action = AddEdge(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(), edgeRhs)
     val inv = action.reversed
     inv shouldBe a [DelEdge[_,_,_,_]]
@@ -162,11 +152,11 @@ class RuleSpec extends FlatSpec with Matchers {
 
   "An DelEdge action" should "apply to a match" in {
     val edgeLhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "B")(edgeLhs)
-    val rhs = G(1 -> "A", 2 -> "B")()
+    val lhs = Graph(1 -> "A", 2 -> "B")(edgeLhs)
+    val rhs = Graph(1 -> "A", 2 -> "B")()
     val action = DelEdge(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(), edgeLhs)
     val (e1, e2) = (1 ~~> 2, 2 ~~> 1)
-    val mix = G(1 -> "A", 2 -> "B")(e1, e2)
+    val mix = Graph(1 -> "A", 2 -> "B")(e1, e2)
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 2), Map(edgeLhs -> e1))
     val (comatch, modNodes, modEdges) = action(m)
     mix.nodes shouldBe Set(1, 2)
@@ -181,8 +171,8 @@ class RuleSpec extends FlatSpec with Matchers {
 
   it should "be reversible" in {
     val edgeLhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "B")(edgeLhs)
-    val rhs = G(1 -> "A", 2 -> "B")()
+    val lhs = Graph(1 -> "A", 2 -> "B")(edgeLhs)
+    val rhs = Graph(1 -> "A", 2 -> "B")()
     val action = DelEdge(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(), edgeLhs)
     val inv = action.reversed
     inv shouldBe a [AddEdge[_,_,_,_]]
@@ -197,13 +187,13 @@ class RuleSpec extends FlatSpec with Matchers {
   "An SetEdgeLabel action" should "apply to a match" in {
     val edgeLhs = 1 ~~> 2
     val edgeRhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A")(edgeLhs)
-    val rhs = G(1 -> "A", 2 -> "A")(edgeRhs)
+    val lhs = Graph(1 -> "A", 2 -> "A")(edgeLhs)
+    val rhs = Graph(1 -> "A", 2 -> "A")(edgeRhs)
     rhs(edgeRhs).label = "a label"
     val action = SetEdgeLabel(lhs, rhs, Map(1 -> 1, 2 -> 2),
       Map(edgeLhs -> edgeRhs), edgeLhs)
     val (e1, e2) = (1 ~~> 2, 2 ~~> 1)
-    val mix = G(1 -> "A", 2 -> "A")(e1, e2)
+    val mix = Graph(1 -> "A", 2 -> "A")(e1, e2)
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 2), Map(edgeLhs -> e1))
     val (comatch, modNodes, modEdges) = action(m)
     mix.nodes shouldBe Set(1, 2)
@@ -221,8 +211,8 @@ class RuleSpec extends FlatSpec with Matchers {
   it should "be reversible" in {
     val edgeLhs = 1 ~~> 2
     val edgeRhs = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A")(edgeLhs)
-    val rhs = G(1 -> "A", 2 -> "A")(edgeRhs)
+    val lhs = Graph(1 -> "A", 2 -> "A")(edgeLhs)
+    val rhs = Graph(1 -> "A", 2 -> "A")(edgeRhs)
     rhs(edgeRhs).label = "a label"
     val action = SetEdgeLabel(lhs, rhs, Map(1 -> 1, 2 -> 2),
       Map(edgeLhs -> edgeRhs), edgeLhs)
@@ -240,42 +230,42 @@ class RuleSpec extends FlatSpec with Matchers {
 
   "A rule" should "compute its atomic actions" in {
     // add node
-    val l1 = G(1 -> "A")()
-    val r1 = G(1 -> "A", 2 -> "A")()
+    val l1 = Graph(1 -> "A")()
+    val r1 = Graph(1 -> "A", 2 -> "A")()
     Rule(l1, r1, Map(1 -> 1), Map()).actions shouldBe Seq(
       AddNode(l1, r1, Map(1 -> 1), Map(), 2))
     // del node
-    val l2 = G(1 -> "A", 2 -> "A")()
-    val r2 = G(1 -> "A")()
+    val l2 = Graph(1 -> "A", 2 -> "A")()
+    val r2 = Graph(1 -> "A")()
     Rule(l2, r2, Map(1 -> 1), Map()).actions shouldBe Seq(
       DelNode(l2, r2, Map(1 -> 1), Map(), 2))
     // set node
     val e1 = 1 ~~> 2
-    val l3 = G(1 -> "A", 2 -> "A")(e1)
-    val r3 = G(1 -> "B", 2 -> "A")(e1)
+    val l3 = Graph(1 -> "A", 2 -> "A")(e1)
+    val r3 = Graph(1 -> "B", 2 -> "A")(e1)
     Rule(l3, r3, Map(1 -> 1, 2 -> 2), Map(e1 -> e1)).actions shouldBe
       Seq(SetNodeLabel(l3, r3, Map(1 -> 1, 2 -> 2), Map(e1 -> e1), 1))
     // add edge
-    val l4 = G(1 -> "A", 2 -> "B")()
-    val r4 = G(1 -> "A", 2 -> "B")(e1)
+    val l4 = Graph(1 -> "A", 2 -> "B")()
+    val r4 = Graph(1 -> "A", 2 -> "B")(e1)
     Rule(l4, r4, Map(1 -> 1, 2 -> 2), Map()).actions shouldBe Seq(
       AddEdge(l4, r4, Map(1 -> 1, 2 -> 2), Map(), e1))
     // del edge
-    val l5 = G(1 -> "A", 2 -> "B")(e1)
-    val r5 = G(1 -> "A", 2 -> "B")()
+    val l5 = Graph(1 -> "A", 2 -> "B")(e1)
+    val r5 = Graph(1 -> "A", 2 -> "B")()
     Rule(l5, r5, Map(1 -> 1, 2 -> 2), Map()).actions shouldBe Seq(
       DelEdge(l5, r5, Map(1 -> 1, 2 -> 2), Map(), e1))
     // set edge
-    val l6 = G(1 -> "A", 2 -> "A")(e1)
-    val r6 = G(1 -> "A", 2 -> "A")(e1)
+    val l6 = Graph(1 -> "A", 2 -> "A")(e1)
+    val r6 = Graph(1 -> "A", 2 -> "A")(e1)
     r6(e1).label = "a label"
     Rule(l6, r6, Map(1 -> 1, 2 -> 2), Map(e1 -> e1)).actions shouldBe
       Seq(SetEdgeLabel(l6, r6, Map(1 -> 1, 2 -> 2), Map(e1 -> e1), e1))
     // all of them
     val e2 = 2 ~~> 1
     val e3 = 1 ~~> 2
-    val l7 = G(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
-    val r7 = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
+    val l7 = Graph(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
+    val r7 = Graph(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     l7(e3).label = "label 1"
     r7(e3).label = "label 2"
     Rule(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3)).actions shouldBe
@@ -291,12 +281,12 @@ class RuleSpec extends FlatSpec with Matchers {
     val e1 = 1 ~~> 2
     val e2 = 2 ~~> 1
     val e3 = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
-    val rhs = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
+    val lhs = Graph(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
+    val rhs = Graph(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     lhs(e3).label = "label 1"
     rhs(e3).label = "label 2"
     val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3))
-    val mix = G(0 -> "A", 1 -> "A", 2 -> "A", 3 -> "A")(e1, e3)
+    val mix = Graph(0 -> "A", 1 -> "A", 2 -> "A", 3 -> "A")(e1, e3)
     val m = Arrow(lhs, mix, Map(0 -> 0, 1 -> 1, 2 -> 2),
       Map(e1 -> e1, e3 -> e3))
     val (comatch, modNodes, modEdges) = r(m)
@@ -317,8 +307,8 @@ class RuleSpec extends FlatSpec with Matchers {
     val e1 = 1 ~~> 2
     val e2 = 2 ~~> 1
     val e3 = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
-    val rhs = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
+    val lhs = Graph(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
+    val rhs = Graph(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     lhs(e3).label = "label 1"
     rhs(e3).label = "label 2"
     val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3))
@@ -337,12 +327,13 @@ class RuleSpec extends FlatSpec with Matchers {
     val e1 = 1 ~~> 2
     val e2 = 2 ~~> 1
     val e3 = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
-    val rhs = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
+    val lhs = Graph(1 -> "A", 2 -> "A", 0 -> "A")(e1, e3)
+    val rhs = Graph(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     lhs(e3).label = "label 1"
     rhs(e3).label = "label 2"
     val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3))
-    val mix = G(0 -> "A", 1 -> "A", 2 -> "A", 3 -> "A")(e1, e3)
+    val mix = Graph(0 -> "A", 1 -> "A", 2 -> "A", 3 -> "A")(e1, e3)
+    mix(e3).label = "label 1"
     val copy = mix.copy
     val m = Arrow(lhs, mix, Map(0 -> 0, 1 -> 1, 2 -> 2),
       Map(e1 -> e1, e3 -> e3))
@@ -358,10 +349,10 @@ class RuleSpec extends FlatSpec with Matchers {
 
   it should "not apply reversibly if match is not derivable" in {
     // del node
-    val lhs = G(1 -> "A")()
-    val rhs = G[Int,String]()()
+    val lhs = Graph(1 -> "A")()
+    val rhs = Graph[Int,String]()()
     val r = Rule(lhs, rhs, Map(), Map())
-    val mix = G(1 -> "A", 2 -> "A")(1 ~~> 2)
+    val mix = Graph(1 -> "A", 2 -> "A")(1 ~~> 2)
     val copy = mix.copy
     val m = Arrow(lhs, mix, Map(1 -> 1), Map())
     val (comatch, _, _) = r(m)
@@ -371,11 +362,11 @@ class RuleSpec extends FlatSpec with Matchers {
     // TODO: Should this be the case?
     // set edge
     val e = 1 ~~> 2
-    val lhs = G(1 -> "A", 2 -> "A")(e)
-    val rhs = G(1 -> "A", 2 -> "A")(e)
+    val lhs = Graph(1 -> "A", 2 -> "A")(e)
+    val rhs = Graph(1 -> "A", 2 -> "A")(e)
     rhs(e).label = "a label"
     val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e -> e))
-    val mix = G(1 -> "A", 2 -> "A")(e)
+    val mix = Graph(1 -> "A", 2 -> "A")(e)
     val copy = mix.copy
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 2), Map(e -> e))
     val (comatch, _, _) = r(m)
