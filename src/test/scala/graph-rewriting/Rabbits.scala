@@ -1,13 +1,10 @@
 package graph_rewriting
 
-import org.scalatest.{FlatSpec, Matchers}
 import implicits._
+import meanfield._ // this imports types N = String and E = IdDiEdge[Int, N]
 
-class Rabbits extends FlatSpec with Matchers {
-
-  object mfa extends MFA[String,String]
-
-  "Rabbits" should "reproduce" in {
+object Rabbits {
+  def main(args: Array[String]): Unit = {
     val k1 = 1.0
     val (e1, e2) = ("father" ~~> "daughter", "mother" ~~> "daughter")
     val parents = Graph("father" -> "R", "mother" -> "R")()
@@ -20,8 +17,8 @@ class Rabbits extends FlatSpec with Matchers {
     val family = Rule(one, two, Map("father" -> "father",
       "mother" -> "mother", "daughter" -> "daughter"),
       Map(e1 -> e1, e2 -> e2), 10)
-    val eqs = mfa.mfa(List(sex, family), List(two),
-      mfa.splitConnectedComponents)
+    val eqs = mfa(List(sex, family), List(two),
+      splitConnectedComponents[N,String,E,String] _)
     eqs.printEqs
   }
 }

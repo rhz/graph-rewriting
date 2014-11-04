@@ -1,44 +1,43 @@
 package graph_rewriting
 
 import scala.annotation.tailrec
-import scala.collection.mutable
-import mutable.ArrayBuffer
-import graph_rewriting.{Eq => GenEq}
 import implicits._
 
-class MFA[NL,EL] {
-
-  type N = String
-  type E = IdDiEdge[Int,N]
-  type G = Graph[N,NL,E,EL]
-  type R = Rule[N,NL,E,EL]
-  type M = Mn[N,NL,E,EL]
-  type P = Pn[N,NL,E,EL]
-  type Eq = GenEq[N,NL,E,EL]
+object meanfield {
 
   // --- Transformers ---
 
-  val splitConnectedComponents: G => Option[P] =
-    (g: G) => if (g.isConnected) None
-              else Some(Mn(g.components))
+  def splitConnectedComponents[N,NL,E<:DiEdgeLike[N],EL](
+    g: Graph[N,NL,E,EL]): Option[Pn[N,NL,E,EL]] =
+    if (g.isConnected) None else Some(Mn(g.components))
 
 
   // --- Fragmentation ---
 
   val mfaMaxIter: Int = 20
 
-  def mfa(rules: Seq[R], observables: Seq[G],
-    transformers: (G => Option[P])*): Vector[Eq] =
-    mfa(mfaMaxIter, rules, observables, transformers: _*)
+  type N = String
+  type E = IdDiEdge[Int, N]
 
-  def mfa(maxIter: Int, rules: Seq[R], observables: Seq[G],
-    transformers: (G => Option[P])*): Vector[Eq] = {
+  def mfa[NL,EL](
+    rules: Traversable[Rule[N,NL,E,EL]],
+    observables: Seq[Graph[N,NL,E,EL]],
+    transformers: (Graph[N,NL,E,EL] => Option[Pn[N,NL,E,EL]])*)
+      : Vector[Eq[N,NL,E,EL]] =
+    mfa(mfaMaxIter, rules, observables, transformers:_*)
+
+  def mfa[NL,EL](maxIter: Int,
+    rules: Traversable[Rule[N,NL,E,EL]],
+    observables: Seq[Graph[N,NL,E,EL]],
+    transformers: (Graph[N,NL,E,EL] => Option[Pn[N,NL,E,EL]])*)
+      : Vector[Eq[N,NL,E,EL]] = {
 
     val reversedRules = rules.map(r => (r, r.reversed)).toMap
     val ti = transformers.zipWithIndex
 
     @tailrec
-    def loop(i: Int, obss: Seq[G], eqs: Vector[Eq]): Vector[Eq] =
+    def loop(i: Int, obss: Seq[Graph[N,NL,E,EL]],
+      eqs: Vector[Eq[N,NL,E,EL]]): Vector[Eq[N,NL,E,EL]] =
       obss match {
         case Seq() => eqs
         case hd +: tl => eqs find (eq => Graph.iso(hd, eq.lhs)) match {
@@ -60,13 +59,13 @@ class MFA[NL,EL] {
             } else if (i < maxIter) { // create an ode only if i < maxIter
               // no transformation is aplicable to hd
               val p = Pn((for (r <- rules) yield {
-                val ropp: R = reversedRules(r)
+                val ropp: Rule[N,NL,E,EL] = reversedRules(r)
                 // minimal glueings with the left-hand side
-                val deletions: Seq[M] =
+                val deletions: Seq[Mn[N,NL,E,EL]] =
                   for ((mg, _, _) <- Graph.unions(hd, r.lhs))
                   yield (-r.rate * mg)
                 // minimal glueings with the right-hand side
-                val additions: Seq[M] =
+                val additions: Seq[Mn[N,NL,E,EL]] =
                   for ((mg, _, m) <- Graph.unions(hd, ropp.lhs);
                        rmg = mg.copy; (comatch, _, _) = ropp(m);
                        lmg = mg.copy; _ = r(comatch)

@@ -1,11 +1,10 @@
 package graph_rewriting
 
-import org.scalatest.{FlatSpec, Matchers}
 import implicits._
+import meanfield._ // this imports types N = String and E = IdDiEdge[Int, N]
 
-class Bimotor extends FlatSpec with Matchers {
-
-  "A bimotor" should "walk on DNA" in {
+object Bimotor {
+  def main(args: Array[String]): Unit = {
     val bc0 = "b" ~~> "c1"
     val bc1 = "b" ~~> "c1"
     val bc2 = "b" ~~> "c2"
@@ -25,26 +24,28 @@ class Bimotor extends FlatSpec with Matchers {
     val bc = fe.reversed; bc.rate = 10
     val be = fc.reversed; be.rate = 1000
 
-    object mfa extends MFA[String,String] {
+    // Transformations
+    type NL = String
+    type EL = String
 
-      // Transformations
-      def invariant(g: G): Option[P] =
-        if (Graph.iso(g, g1) || Graph.iso(g, g3)) Some(1.0 * g4)
-        else None
+    def invariant(g: Graph[N,NL,E,EL]): Option[Pn[N,NL,E,EL]] =
+      if (Graph.iso(g, g1) || Graph.iso(g, g3)) Some(Mn(g4))
+      else None
 
-      def reachable(g: G): Option[P] = {
-        val bs = g.nodes collect { case n if g(n).label == Some("bimotor") => n }
-        val cs = g.nodes collect { case n if g(n).label == Some("chain") => n }
-        if ((bs.size == 1) && (bs forall (g(_).outDegree == 2)) &&
-            (cs.size <= 2) && (cs.toSeq.combinations(2) forall {
-              case Seq(u, v) => ((g(u) edgesWith v).size == 1) }))
-          None
-        else Some(Pn.empty)
-      }
+    def reachable(g: Graph[N,NL,E,EL]): Option[Pn[N,NL,E,EL]] = {
+      val bs = g.nodes collect {
+        case n if g(n).label == Some("bimotor") => n }
+      val cs = g.nodes collect {
+        case n if g(n).label == Some("chain") => n }
+      if ((bs.size == 1) && (bs forall (g(_).outDegree == 2)) &&
+          (cs.size <= 2) && (cs.toSeq.combinations(2) forall {
+            case Seq(u, v) => ((g(u) edgesWith v).size == 1) }))
+        None
+      else Some(Pn.empty) // Pn.empty = zero
     }
 
-    val eqs = mfa.mfa(List(fe, fc, bc, be), List(g1, g2, g3),
-      mfa.invariant _, mfa.reachable _)
+    val eqs = mfa(List(fe, fc, bc, be), List(g1, g2, g3),
+      invariant _, reachable _)
     eqs.printEqs
   }
 }

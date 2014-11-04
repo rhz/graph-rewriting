@@ -236,8 +236,8 @@ class Eqs[N,NL,E<:DiEdgeLike[N],EL](eqs: Traversable[Eq[N,NL,E,EL]]) {
 
     // Print the system of diff eqs
     for (ODE(lhs, rhs) <- simplify) {
-      print(s"dF${index(lhs)} = ")
-      if (rhs.isEmpty) print("0")
+      print(s"dF${index(lhs)} =")
+      if (rhs.isEmpty) print(" 0")
       else for (Mn(coef, numer, denom) <- rhs.terms) {
         if (coef < 0) print(" - ")
         else print(" + ")

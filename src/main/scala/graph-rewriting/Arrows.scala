@@ -62,6 +62,7 @@ case class Arrow[N1,NL1,E1<:DiEdgeLike[N1],EL1,
   // def + (uv: (N1, N2)) = Arrow(dom, cod, n + uv, e)
   // def + (xy: (E1, E2)) = Arrow(dom, cod, n, e + xy)
 
+  // FIXME: This doesn't seem to work
   def + [X1,X2](kv: (X1, X2))(implicit ev1: ClassTag[X1],
     ev2: ClassTag[X2], ev3: ClassTag[N1], ev4: ClassTag[N2],
     ev5: ClassTag[E1], ev6: ClassTag[E2]) = kv match {
