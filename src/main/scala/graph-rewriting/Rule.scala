@@ -211,9 +211,21 @@ case class Rule[N,NL,E<:DiEdgeLike[N],EL](
 }
 
 object Rule {
-  // TODO: Creates a `Rule` with `n` and `e` given
-  // by all common nodes and edges in `lhs` and `rhs`.
+
   def apply[N,NL,E<:DiEdgeLike[N],EL](
-    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL]) = ???
+    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL])(implicit
+      newNode: Graph[N,_,_,_] => N,
+      newEdge: (Graph[N,_,E,_], N, N) => E): Rule[N,NL,E,EL] =
+    apply(lhs, rhs, 1.0)
+
+  // Creates a `Rule` with `n` and `e` given by all common nodes and edges in `lhs` and `rhs`.
+  def apply[N,NL,E<:DiEdgeLike[N],EL](
+    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL], rate: Double)(
+    implicit newNode: Graph[N,_,_,_] => N,
+      newEdge: (Graph[N,_,E,_], N, N) => E): Rule[N,NL,E,EL] = {
+    val n = for (n <- lhs.nodes if rhs.nodes contains n) yield (n, n)
+    val e = for (e <- lhs.edges if rhs.edges contains e) yield (e, e)
+    Rule(lhs, rhs, n.toMap, e.toMap, rate)
+  }
 }
 
