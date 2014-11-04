@@ -119,6 +119,14 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     }
     this
   }
+  def += (g: Graph[N,NL,E,EL]): this.type = {
+    addNodes(g.nodes)
+    addEdges(g.edges)
+    for ((n, l) <- g.nodelabels) nodelabels(n) = l
+    for ((e, l) <- g.edgelabels) edgelabels(e) = l
+    this
+  }
+  def + (g: Graph[N,NL,E,EL]): Graph[N,NL,E,EL] = copy += g
 
   def -= (n: N): this.type = {
     if (nodes contains n) {
@@ -139,6 +147,11 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
       for (n <- e.nodes)
         adjacency(n) -= e
     }
+    this
+  }
+  def -= (g: Graph[N,NL,E,EL]): this.type = {
+    delNodes(g.nodes)
+    delEdges(g.edges)
     this
   }
 
@@ -762,26 +775,5 @@ object Graph {
       (po, Arrow(g1, po, fn1, fe1), Arrow(g2, po, fn2, fe2))
     }
   }
-
-  // def derivableRightUnions(r: Rule): Seq[(Graph[N,NL,E,EL], Arrow[N,E], Arrow[N,E])] = {
-  //   val inv = r.reversed
-  //   for {
-  //     (pb, m1, m2) <- unions(g, r.cod)
-  //     val i = pb.copy
-  //     val (nodes, edges) = inv(m2)
-  //     val delNodes: Seq[pb.NodeT] = nodes diff pb.nodes
-  //     val m3 = Match(r.dom, pb)(m2.fn ++ Map(...))
-  //     val _ = r(m3)
-  //     if i.isIsoTo(pb)
-  //   } yield i
-  // }
-
-  // def relevantLeftUnions(r: Rule): Seq[Graph[N,NL,E,EL], Arrow[N,E], Arrow[N,E]] = {
-  //   List()
-  // }
-
-  // def relevantRightUnions(r: Rule): Seq[Graph[N,NL,E,EL], Arrow[N,E], Arrow[N,E]] = {
-  //   List()
-  // }
 }
 
