@@ -61,7 +61,7 @@ Have a look at [VoterModel.scala](https://github.com/rhz/graph-rewriting/blob/ma
 Papers
 ------
 
-- ["Approximations for stochastic graph rewriting" (ICFEM, 2014). Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki](http://www.pps.univ-paris-diderot.fr/~danos/pdf/icfem.pdf)
+- "[Approximations for stochastic graph rewriting](http://www.pps.univ-paris-diderot.fr/~danos/pdf/icfem.pdf)" (ICFEM, 2014). Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki.
 
 Roadmap
 -------
