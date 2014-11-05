@@ -58,6 +58,11 @@ Use
 
 Have a look at [VoterModel.scala](https://github.com/rhz/graph-rewriting/blob/master/src/test/scala/graph-rewriting/VoterModel.scala), [Rabbits.scala](https://github.com/rhz/graph-rewriting/blob/master/src/test/scala/graph-rewriting/Rabbits.scala), and [Bimotor.scala](https://github.com/rhz/graph-rewriting/blob/master/src/test/scala/graph-rewriting/Bimotor.scala) for more examples on how to use this tool to derive mean-field approximations of your graph transformation systems.
 
+Papers
+------
+
+- ["Approximations for stochastic graph rewriting" (ICFEM, 2014). Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki](http://www.pps.univ-paris-diderot.fr/~danos/pdf/icfem.pdf)
+
 Roadmap
 -------
 
