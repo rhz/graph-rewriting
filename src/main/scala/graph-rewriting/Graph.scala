@@ -128,6 +128,8 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     for ((e, l) <- g.edgelabels) edgelabels(e) = l
     this
   }
+  def + (n: N): Graph[N,NL,E,EL] = copy += n
+  def + (e: E): Graph[N,NL,E,EL] = copy += e
   def + (g: Graph[N,NL,E,EL]): Graph[N,NL,E,EL] = copy += g
 
   def -= (n: N): this.type = {
