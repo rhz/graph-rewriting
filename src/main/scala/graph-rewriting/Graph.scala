@@ -19,8 +19,10 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
   import Graph._
 
   def stringPrefix = "Graph"
-  override def toString = stringPrefix + "(" +
-    "nodes = " + nodes + ", edges = " + edges + ")"
+  override def toString = s"$stringPrefix(" +
+  s"nodes = $nodes, edges = $edges" +
+  (if (nodelabels.nonEmpty) s", nodelabels = $nodelabels" else "") +
+  (if (edgelabels.nonEmpty) s", edgelabels = $edgelabels" else "") + ")"
 
   def copy = {
     val g = new Graph[N,NL,E,EL]
