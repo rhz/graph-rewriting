@@ -336,15 +336,31 @@ object Graph {
     g
   }
 
-  def apply[N,NL](nodes: (N,NL)*)(edges: IdDiEdge[Int,N]*)
-      : Graph[N,NL,IdDiEdge[Int,N],String] =
-    Graph[N,NL,IdDiEdge[Int,N],String](
-      nodes map (_._1), nodes, edges, List())
+  // FIXME: ambiguous reference to overloaded definition (why?)
+  // def apply[N,NL,E,EL](nodes: (N,NL)*)(edges: (E,EL)*)(
+  //   implicit d: DummyImplicit): Graph[N,NL,E,EL] =
+  //   Graph(nodes map (_._1), nodes, edges map (_._1), edges)
 
-  def apply[N](n1: N, nodes: N*)(edges: IdDiEdge[Int,N]*)
-      : Graph[N,String,IdDiEdge[Int,N],String] =
+  // IdDiEdge is the default for E
+  def apply[N,NL,EL](nodes: (N,NL)*)(edges: (IdDiEdge[Int,N],EL)*)
+      : Graph[N,NL,IdDiEdge[Int,N],EL] =
+    Graph(nodes map (_._1), nodes, edges map (_._1), edges)
+
+  // String is the default for EL
+  def apply[N,NL](nodes: (N,NL)*)(e1: IdDiEdge[Int,N],
+    edges: IdDiEdge[Int,N]*): Graph[N,NL,IdDiEdge[Int,N],String] =
+    Graph(nodes map (_._1), nodes, e1 +: edges, List())
+
+  // String is the default for NL
+  def apply[N,EL](n1: N, nodes: N*)(edges: (IdDiEdge[Int,N],EL)*)
+      : Graph[N,String,IdDiEdge[Int,N],EL] =
+    Graph(n1 +: nodes, List(), edges map (_._1), edges)
+
+  // String is the default for NL and EL
+  def apply[N](n1: N, nodes: N*)(e1: IdDiEdge[Int,N],
+    edges: IdDiEdge[Int,N]*): Graph[N,String,IdDiEdge[Int,N],String] =
     Graph[N,String,IdDiEdge[Int,N],String](
-      n1 +: nodes, List(), edges, List())
+      n1 +: nodes, List(), e1 +: edges, List())
 
   // --- Isomorphisms ---
 
