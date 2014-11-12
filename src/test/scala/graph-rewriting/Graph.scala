@@ -204,12 +204,12 @@ class GraphSpec extends FlatSpec with Matchers {
     g(5).outgoing shouldBe Set(e2, e3)
     g(6).incoming shouldBe Set(e3)
     g(6).outgoing shouldBe empty
-    g(4).outgoingTo(5) shouldBe Set(e1)
-    g(4).outgoingTo(6) shouldBe empty
-    g(5).outgoingTo(4) shouldBe Set(e2)
-    g(5).outgoingTo(6) shouldBe Set(e3)
-    g(6).outgoingTo(4) shouldBe empty
-    g(6).outgoingTo(5) shouldBe empty
+    g(4).edgesTo(5) shouldBe Set(e1)
+    g(4).edgesTo(6) shouldBe empty
+    g(5).edgesTo(4) shouldBe Set(e2)
+    g(5).edgesTo(6) shouldBe Set(e3)
+    g(6).edgesTo(4) shouldBe empty
+    g(6).edgesTo(5) shouldBe empty
     // g(4).incomingFrom(5) shouldBe Set(e2) // not implemented
   }
 

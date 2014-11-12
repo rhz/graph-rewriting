@@ -25,7 +25,7 @@ object implicits {
   }
 
   implicit def newIdDiEdge[N](g: Graph[N,_,IdDiEdge[Int,N],_],
-    u: N, v: N) = new IdDiEdge(next(g(u) outgoingTo v map {
+    u: N, v: N) = new IdDiEdge(next(g(u) edgesTo v map {
       case IdDiEdge(id,_,_) => id }), u, v)
 
   // -- Maps --

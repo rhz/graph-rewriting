@@ -51,32 +51,30 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
     @inline def label_= (l: NL) = nodelabels(n) = l
     @inline def isLabelled: Boolean = nodelabels isDefinedAt n
     @inline def unlabel: Unit = nodelabels -= n
-    def edges: Set[E] = adjacency(n).keySet
-    def neighbours: Set[N] = adjacency(n).values.flatten.toSet
     type Other = Graph[_,_,_,_]
     def matches(that: Other#Node) =
       !this.isLabelled || (that.isLabelled && this.label == that.label)
-    def edgesWith(m: N): Iterable[E] =
-      adjacency(n) withFilter (_._2 contains m) map (_._1)
-    def degree: Int = adjacency(n).size
     // TODO: should these be in a subclass specialised for DiEdges?
     // or should they just throw a UnsupportedOperation?
-    def outgoing: Set[E] = edges collect {
-      case e: DiEdgeLike[_] if e.source == n => e.asInstanceOf[E]
-    }
-    def incoming: Set[E] = edges collect {
-      case e: DiEdgeLike[_] if e.target == n => e.asInstanceOf[E]
-    }
-    def outgoingTo(m: N): Set[E] = edges collect {
-      case e: DiEdgeLike[_] if e.source == n && e.target == m =>
-        e.asInstanceOf[E]
-    }
-    def incomingFrom(m: N): Set[E] = ???
+    def edges: Set[E] = adjacency(n).keySet
+    def outgoing: Set[E] = edges collect { case e: DiEdgeLike[_]
+      if e.source == n => e.asInstanceOf[E] }
+    def incoming: Set[E] = edges collect { case e: DiEdgeLike[_]
+      if e.target == n => e.asInstanceOf[E] }
+    def edgesWith(m: N): Iterable[E] =
+      adjacency(n) withFilter (_._2 contains m) map (_._1)
+    def edgesTo(m: N): Set[E] = edges collect { case e: DiEdgeLike[_]
+      if e.source == n && e.target == m => e.asInstanceOf[E] }
+    def edgesFrom(m: N): Set[E] = ???
+    def degree: Int = adjacency(n).size
     def inDegree: Int = incoming.size
     def outDegree: Int = outgoing.size
+    def neighbours: Set[N] = adjacency(n).values.flatten.toSet
+    // TODO: Should this be somewhere else?
+    // It should not really be necessary
     def opp(e: E): N = e match {
       case e: DiEdgeLike[_] =>
-        if (e.source == n) e.target
+        if      (e.source == n) e.target
         else if (e.target == n) e.source
         else throw new IllegalArgumentException("node " + n +
           " is not the source nor the target of edge " + e)
@@ -683,8 +681,8 @@ object Graph {
       val edges: Seq[(E, E1, E2)] =
         for { u <- nodes;
               v <- nodes;
-              e1 <- g1(fn1(u)) outgoingTo fn1(v);
-              e2 <- g2(fn2(u)) outgoingTo fn2(v);
+              e1 <- g1(fn1(u)) edgesTo fn1(v);
+              e2 <- g2(fn2(u)) edgesTo fn2(v);
               // TODO: are e1 and e2 guaranteed to have the same
               // labels on the endpoint nodes?
               if !seen1(e1) && !seen2(e2) && (g1(e1) matches g2(e2));
