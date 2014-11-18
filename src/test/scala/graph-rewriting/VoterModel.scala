@@ -77,8 +77,31 @@ object VoterModel {
         // n2 and n3
       } else None
 
+    def destroyParallelEdges(g: Graph[N,NL,E,EL])
+        : Option[Pn[N,NL,E,EL]] = {
+      val h = g.copy
+      var parallelEdges = false
+      for {
+        u <- h.nodes
+        v <- h.nodes
+        u2v = h(u).edgesTo(v)
+        if u2v.size > 1
+      } {
+        parallelEdges = true
+        // we assume that all edges from u to v have the same label
+        assume(u2v.toSeq.sliding(2) forall {
+          case Seq(e1, e2) => h(e1).label == h(e2).label
+        }, s"edges from $u to $v do not have the same label, " +
+            "can't merge them.")
+        h.delEdges(u2v.tail)
+      }
+      if (parallelEdges) Some(Pn(h))
+      else None
+    }
+
     // Fragmentation
-    val eqs = mfa(List(r2b, b2r), List(r), pairApproximation _)
+    val eqs = mfa(List(r2b, b2r, flaprb, flapbr), List(r),
+      pairApproximation _, destroyParallelEdges _)
     eqs.printEqs
   }
 }
