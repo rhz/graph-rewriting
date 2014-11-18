@@ -323,44 +323,35 @@ object Graph {
 
   // --- Constructors ---
 
-  def apply[N,NL,E<:EdgeLike[N],EL](
-    nodes: Traversable[N],
-    nodelabels: Traversable[(N, NL)],
-    edges: Traversable[E],
-    edgelabels: Traversable[(E, EL)]): Graph[N,NL,E,EL] = {
+  private def const[N,NL,E<:EdgeLike[N],EL](
+    nodes: Traversable[(N,Option[NL])],
+    edges: Traversable[(E,Option[EL])]): Graph[N,NL,E,EL] = {
     val g = new Graph[N,NL,E,EL]
-    g.addNodes(nodes)
-    g.addEdges(edges)
-    for ((n, l) <- nodelabels) g(n).label = l
-    for ((e, l) <- edgelabels) g(e).label = l
+    g.addNodes(nodes map (_._1))
+    g.addEdges(edges map (_._1))
+    for ((n, Some(l)) <- nodes) g(n).label = l
+    for ((e, Some(l)) <- edges) g(e).label = l
     g
   }
 
-  // FIXME: ambiguous reference to overloaded definition (why?)
-  // def apply[N,NL,E,EL](nodes: (N,NL)*)(edges: (E,EL)*)(
-  //   implicit d: DummyImplicit): Graph[N,NL,E,EL] =
-  //   Graph(nodes map (_._1), nodes, edges map (_._1), edges)
+  def apply[N,NL,E<:EdgeLike[N],EL](): Graph[N,NL,E,EL] =
+    const(List(), List())
 
-  // IdDiEdge is the default for E
-  def apply[N,NL,EL](nodes: (N,NL)*)(edges: (IdDiEdge[Int,N],EL)*)
-      : Graph[N,NL,IdDiEdge[Int,N],EL] =
-    Graph(nodes map (_._1), nodes, edges map (_._1), edges)
+  // def apply[N,NL,E<:EdgeLike[N],EL](
+  //   nodes: Traversable[(N,Option[NL])],
+  //   edges: Traversable[(E,Option[EL])]): Graph[N,NL,E,EL] =
+  //   const(nodes, edges)
 
-  // String is the default for EL
-  def apply[N,NL](nodes: (N,NL)*)(e1: IdDiEdge[Int,N],
-    edges: IdDiEdge[Int,N]*): Graph[N,NL,IdDiEdge[Int,N],String] =
-    Graph(nodes map (_._1), nodes, e1 +: edges, List())
+  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) = new {
+    def apply[E<:EdgeLike[N],EL](edges: (E,Option[EL])*) =
+      const(n1 +: nodes, edges)
+    def apply() = const[N,NL,IdDiEdge[Int,N],String](n1 +: nodes, List())
+  }
 
-  // String is the default for NL
-  def apply[N,EL](n1: N, nodes: N*)(edges: (IdDiEdge[Int,N],EL)*)
-      : Graph[N,String,IdDiEdge[Int,N],EL] =
-    Graph(n1 +: nodes, List(), edges map (_._1), edges)
-
-  // String is the default for NL and EL
-  def apply[N](n1: N, nodes: N*)(e1: IdDiEdge[Int,N],
-    edges: IdDiEdge[Int,N]*): Graph[N,String,IdDiEdge[Int,N],String] =
-    Graph[N,String,IdDiEdge[Int,N],String](
-      n1 +: nodes, List(), e1 +: edges, List())
+  def withType[N,NL,E<:EdgeLike[N],EL] = new {
+    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
+      const(nodes, edges)
+  }
 
   // --- Isomorphisms ---
 

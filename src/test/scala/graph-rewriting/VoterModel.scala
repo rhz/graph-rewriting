@@ -4,11 +4,12 @@ import implicits._
 import meanfield._
 
 object VoterModel {
+  val G = Graph.withType[String,String,IdDiEdge[Int,String],String]
   def main(args: Array[String]): Unit = {
     val (e1, e2, e3) = ("u" ~~> "v", "u" ~~> "w", "v" ~~> "w")
-    val rb = Graph("u" -> "red", "v" -> "blue")(e1)
-    val bb = Graph("u" -> "blue", "v" -> "blue")(e1)
-    val rr = Graph("u" -> "red", "v" -> "red")(e1)
+    val rb = G("u" -> "red", "v" -> "blue")(e1)
+    val bb = G("u" -> "blue", "v" -> "blue")(e1)
+    val rr = G("u" -> "red", "v" -> "red")(e1)
     val rbw = rb + "w"
     val rwb = rbw + e2; rwb -= e1
     val bwr = rbw + e3; rwb -= e1
@@ -24,8 +25,8 @@ object VoterModel {
     // TODO: same missing rules here (see above)
 
     // For rewire-to-same rules, uncomment these lines
-    // val r = Graph("w" -> "red")()
-    // val b = Graph("w" -> "blue")()
+    // val r = G("w" -> "red")()
+    // val b = G("w" -> "blue")()
     // val rrb = rb + r; rrb += e2 -= e1
     // val rbb = rb + b; rbb += e3 -= e1
     // val flaprb = Rule(rb + r, rrb, 100)
@@ -40,18 +41,21 @@ object VoterModel {
     // val flapbr = Rule(frb, bfr, 1000)
 
     // Observables
-    val r = Graph("u" -> "red")()
+    val r = G("u" -> "red")()
 
     // Transformers
     type NL = String
     type EL = String
+
     def paPn(g: Graph[N,NL,E,EL], n1: N, n2: N, n3: N) =
       Pn(Mn(g.inducedSubgraph(Set(n1, n2))) *
             g.inducedSubgraph(Set(n2, n3)) /
             g.inducedSubgraph(Set(n2))) // n2 is intersection
+
     // TODO: How can we make the splitting mechanism more generic?
     // Of course, paPn should have Set[N], Set[N] as parameters and
-    // the intersection should be computed from these 2 sets.
+    // the intersection should be computed from these 2 sets, but the
+    // hard part is how to split g.nodes into these 2 sets.
     def pairApproximation(g: Graph[N,NL,E,EL])
         : Option[Pn[N,NL,E,EL]] =
       if (g.nodes.size == 3 && g.isConnected) {

@@ -48,5 +48,10 @@ object implicits {
   // -- Eqs --
   implicit def eqsToEqs[N,NL,E<:DiEdgeLike[N],EL](
     eqs: Traversable[Eq[N,NL,E,EL]]) = new Eqs(eqs)
+
+  // -- Graph --
+  implicit def withLabel[T,U](x: (T,U)) = (x._1, Some(x._2))
+  implicit def withoutLabel[T,U](x: T): (T, Option[U])  = (x, None)
+  implicit def toSome[T](x: T) = Some(x)
 }
 
