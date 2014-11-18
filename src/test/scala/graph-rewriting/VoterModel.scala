@@ -4,7 +4,9 @@ import implicits._
 import meanfield._
 
 object VoterModel {
-  val G = Graph.withType[String,String,IdDiEdge[Int,String],String]
+  type NL = String
+  type EL = String
+  val G = Graph.withType[N,NL,E,EL]
   def main(args: Array[String]): Unit = {
     val (e1, e2, e3) = ("u" ~~> "v", "u" ~~> "w", "v" ~~> "w")
     val rb = G("u" -> "red", "v" -> "blue")(e1)
@@ -44,9 +46,6 @@ object VoterModel {
     val r = G("u" -> "red")()
 
     // Transformers
-    type NL = String
-    type EL = String
-
     def paPn(g: Graph[N,NL,E,EL], n1: N, n2: N, n3: N) =
       Pn(Mn(g.inducedSubgraph(Set(n1, n2))) *
             g.inducedSubgraph(Set(n2, n3)) /
@@ -101,7 +100,9 @@ object VoterModel {
 
     // Fragmentation
     val eqs = mfa(List(r2b, b2r, flaprb, flapbr), List(r),
-      pairApproximation _, destroyParallelEdges _)
+      splitConnectedComponents[N,NL,E,EL] _,
+      pairApproximation _,
+      destroyParallelEdges _)
     eqs.printEqs
   }
 }
