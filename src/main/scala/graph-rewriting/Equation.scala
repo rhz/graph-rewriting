@@ -96,14 +96,6 @@ case class RatePn(terms: Vector[RateMn]) {
   // What would it mean to be empty?
   require(terms.nonEmpty, "empty polynomial")
   // multiplication and division
-  // def * (k: Rate) = if (isEmpty) RatePn(RateMn(k))
-  //                   else RatePn(terms map (_ * k))
-  // def / (k: Rate) = if (isEmpty) RatePn(RateMn(Vector(), Vector(k)))
-  //                   else RatePn(terms map (_ / k))
-  // def * (rm: RateMn) = if (isEmpty) RatePn(rm)
-  //                      else RatePn(terms map (_ * rm))
-  // def / (rm: RateMn) = if (isEmpty) RatePn(RateMn() / rm)
-  //                      else RatePn(terms map (_ / rm))
   def * (k: Rate) = RatePn(terms map (_ * k))
   def / (k: Rate) = RatePn(terms map (_ / k))
   def * (rm: RateMn) = RatePn(terms map (_ * rm))
@@ -139,8 +131,6 @@ case class RatePn(terms: Vector[RateMn]) {
     Pn(Mn[N,NL,E,EL](this) +: p.terms)
   def - [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]) =
     Pn(Mn[N,NL,E,EL](this) +: (-p).terms)
-  // def unary_- = if (isEmpty) RatePn(-RateMn())
-  //               else RatePn(terms map (-_))
   def unary_- = RatePn(terms map (-_))
   def simplify: RatePn = {
     val rmns = mutable.ArrayBuffer.empty[RateMn]
@@ -160,11 +150,8 @@ case class RatePn(terms: Vector[RateMn]) {
     if (nonZero.isEmpty) RatePn.zero else RatePn(nonZero.toVector)
   }
   def isZero: Boolean = terms forall (_.isZero)
-  // def isEmpty: Boolean = terms.isEmpty
-  // def nonEmpty: Boolean = terms.nonEmpty
   def map(f: RateMn => RateMn) = RatePn(terms map f)
   override def toString =
-    // if (terms.isEmpty) "1"
     if (terms.length == 1) s"${terms.head}"
     else "(" + (terms mkString " + ") + ")"
 }
@@ -234,9 +221,6 @@ object Mn {
     new Mn[N,NL,E,EL](RatePn.zero, Vector(), Vector())
   def one[N,NL,E<:DiEdgeLike[N],EL] =
     new Mn[N,NL,E,EL](RatePn.one, Vector(), Vector())
-  // def apply[N,NL,E<:DiEdgeLike[N],EL]() = zero[N,NL,E,EL]
-  // def apply[N,NL,E<:DiEdgeLike[N],EL](n: Double) =
-  //   new Mn[N,NL,E,EL](RatePn(RateMn(n)), Vector(), Vector())
   def apply[N,NL,E<:DiEdgeLike[N],EL](rp: RatePn) =
     new Mn[N,NL,E,EL](rp, Vector(), Vector())
   def apply[N,NL,E<:DiEdgeLike[N],EL](numer: Graph[N,NL,E,EL]*) =
@@ -247,10 +231,6 @@ object Mn {
   def apply[N,NL,E<:DiEdgeLike[N],EL](
     numer: Traversable[Graph[N,NL,E,EL]]) =
     new Mn[N,NL,E,EL](RatePn.one, numer.toVector, Vector())
-  // def apply[N,NL,E<:DiEdgeLike[N],EL](
-  //   n: Double,
-  //   numer: Graph[N,NL,E,EL]*) =
-  //   new Mn[N,NL,E,EL](RatePn(RateMn(n)), numer.toVector, Vector())
   def apply[N,NL,E<:DiEdgeLike[N],EL](
     rp: RatePn,
     numer: Graph[N,NL,E,EL]*) =
@@ -342,32 +322,11 @@ class Pn[N,NL,E<:DiEdgeLike[N],EL](val terms: Vector[Mn[N,NL,E,EL]]) {
                   yield Mn(c, m.numer, m.denom)
     if (nonZero.isEmpty) Pn.zero else Pn(nonZero.toVector)
   }
-    // immutable version of `simplify`... but it doesn't work
-    // Pn(terms.foldLeft(Vector.empty[Mn[N,NL,E,EL]]) ({
-    //   case (res1, m1) => {
-    //     val Mn(c1, n1, d1) = m1
-    //     // check if m1 is "iso" to a term in res1
-    //     // if it is, update the coefficient of that term
-    //     val (found, res2) = res1.foldLeft((false, res1)) ({
-    //       case ((found, res2), m2) => {
-    //         val Mn(c2, n2, d2) = m2
-    //         if (!found || (Graph.isos(n1, n2) && Graph.isos(d1, d2)))
-    //           (true, res2 :+ Mn(c1 + c2, n2, d2))
-    //         else (found, res2 :+ m2)
-    //       }
-    //     })
-    //     if (found) res2
-    //     else res1 :+ m1
-    //   }
-    // }).filter(m => (m.coef <= -eps) || (m.coef >= eps)))
 
   override def toString = s"Pn($terms)"
 }
 
 object Pn {
-  // def empty[N,NL,E<:DiEdgeLike[N],EL]: Pn[N,NL,E,EL] =
-  //   new Pn[N,NL,E,EL](Vector())
-  // def apply[N,NL,E<:DiEdgeLike[N],EL](): Pn[N,NL,E,EL] = empty
   def zero[N,NL,E<:DiEdgeLike[N],EL] =
     new Pn[N,NL,E,EL](Vector(Mn.zero[N,NL,E,EL]))
   def one[N,NL,E<:DiEdgeLike[N],EL] =

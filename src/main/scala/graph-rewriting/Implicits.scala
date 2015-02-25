@@ -37,8 +37,8 @@ object implicits {
   implicit def nameToRate(name: String) = Rate(name)
   // By not implicitly converting to RateMn we can use RatePn.* method
   // implicit def nameToRMn(name: String) = RateMn(Rate(name))
-  implicit def nameToRPn(name: String) = RatePn(RateMn(Rate(name)))
   // implicit def rateToRMn(k: Rate) = RateMn(k)
+  implicit def nameToRPn(name: String) = RatePn(RateMn(Rate(name)))
   implicit def rateToRPn(k: Rate) = RatePn(RateMn(k))
   implicit def rateMnToRPn(rm: RateMn) = RatePn(rm)
 
@@ -58,10 +58,6 @@ object implicits {
     g: Graph[N,NL,E,EL]) = Pn[N,NL,E,EL](Mn(g))
   implicit def mnToPn[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
     Pn[N,NL,E,EL](m)
-
-  // -- Eqs --
-  // implicit def eqsToEqs[N,NL,E<:DiEdgeLike[N],EL](
-  //   eqs: Traversable[Eq[N,NL,E,EL]]) = new Eqs(eqs)
 
   // -- Graph --
   implicit def withLabel[T,U](x: (T,U)) = (x._1, Some(x._2))
