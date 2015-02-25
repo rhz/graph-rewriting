@@ -33,21 +33,35 @@ object implicits {
     def inverse = m map (_.swap)
   }
 
-  // -- Polynomials --
-  implicit def numToMn[N,NL,E<:DiEdgeLike[N],EL](n: Double) =
-    Mn[N,NL,E,EL](n)
+  // -- Rate monomials and polynomials --
+  implicit def nameToRate(name: String) = Rate(name)
+  // By not implicitly converting to RateMn we can use RatePn.* method
+  // implicit def nameToRMn(name: String) = RateMn(Rate(name))
+  implicit def nameToRPn(name: String) = RatePn(RateMn(Rate(name)))
+  // implicit def rateToRMn(k: Rate) = RateMn(k)
+  implicit def rateToRPn(k: Rate) = RatePn(RateMn(k))
+  implicit def rateMnToRPn(rm: RateMn) = RatePn(rm)
+
+  // -- Graph monomials and polynomials --
+  // Rates don't have required type information
+  // implicit def nameToMn(name: String) = Mn(name)
+  // implicit def nameToPn(name: String) = Pn(Mn(name))
+  // implicit def rateToMn(k: Rate) = Mn(k)
+  // implicit def rateToPn(k: Rate) = Pn(Mn(k))
+  // implicit def rateMnToMn(rm: RateMn) = Mn(rm)
+  // implicit def rateMnToPn(rm: RateMn) = Pn(Mn(rm))
+  // implicit def ratePnToMn(rp: RatePn) = Mn(rp)
+  // implicit def ratePnToPn(rp: RatePn) = Pn(Mn(rp))
   implicit def graphToMn[N,NL,E<:DiEdgeLike[N],EL](
-    g: Graph[N,NL,E,EL]) = Mn[N,NL,E,EL](g)
-  // implicit def numToPn[N,NL,E<:DiEdgeLike[N],EL](n: Double) =
-  //   Pn[N,NL,E,EL](Mn[N,NL,E,EL](n))
-  // implicit def graphToPn[N,NL,E<:DiEdgeLike[N],EL](
-  //   g: Graph[N,NL,E,EL]) = Pn[N,NL,E,EL](Mn(g))
+    g: Graph[N,NL,E,EL]): Mn[N,NL,E,EL] = Mn(g)
+  implicit def graphToPn[N,NL,E<:DiEdgeLike[N],EL](
+    g: Graph[N,NL,E,EL]) = Pn[N,NL,E,EL](Mn(g))
   implicit def mnToPn[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
     Pn[N,NL,E,EL](m)
 
   // -- Eqs --
-  implicit def eqsToEqs[N,NL,E<:DiEdgeLike[N],EL](
-    eqs: Traversable[Eq[N,NL,E,EL]]) = new Eqs(eqs)
+  // implicit def eqsToEqs[N,NL,E<:DiEdgeLike[N],EL](
+  //   eqs: Traversable[Eq[N,NL,E,EL]]) = new Eqs(eqs)
 
   // -- Graph --
   implicit def withLabel[T,U](x: (T,U)) = (x._1, Some(x._2))

@@ -171,14 +171,18 @@ case class SetEdgeLabel[N,NL,E<:DiEdgeLike[N],EL](
 
 // --- Rules ---
 
+case class Rate(val name: String, val value: Double = 1.0) {
+  override def toString = name
+}
+
 case class Rule[N,NL,E<:DiEdgeLike[N],EL](
   val lhs: Graph[N,NL,E,EL],
   val rhs: Graph[N,NL,E,EL],
   val n: Map[N,N],
   val e: Map[E,E],
-  var rate: Double = 1.0)(implicit
-  val newNode: Graph[N,_,_,_] => N,
-  val newEdge: (Graph[N,_,E,_], N, N) => E)
+  val rate: Rate)(
+  implicit val newNode: Graph[N,_,_,_] => N,
+           val newEdge: (Graph[N,_,E,_], N, N) => E)
     extends Action[N,NL,E,EL] {
 
   val actions: Seq[Action[N,NL,E,EL]] = {
@@ -207,20 +211,15 @@ case class Rule[N,NL,E<:DiEdgeLike[N],EL](
           (cm1 + cm2, an1 ++ an2, n1 ++ n2, e1 ++ e2)
         }
       })
-  def reversed = Rule(rhs, lhs, n.inverse, e.inverse, rate)
+  def reversed() = Rule(rhs, lhs, n.inverse, e.inverse, Rate(rate.name + "_reversed", 0))
+  def reversed(rate: Rate) = Rule(rhs, lhs, n.inverse, e.inverse, rate)
 }
 
 object Rule {
 
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL])(implicit
-      newNode: Graph[N,_,_,_] => N,
-      newEdge: (Graph[N,_,E,_], N, N) => E): Rule[N,NL,E,EL] =
-    apply(lhs, rhs, 1.0)
-
   // Creates a `Rule` with `n` and `e` given by all common nodes and edges in `lhs` and `rhs`.
   def apply[N,NL,E<:DiEdgeLike[N],EL](
-    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL], rate: Double)(
+    lhs: Graph[N,NL,E,EL], rhs: Graph[N,NL,E,EL], rate: Rate)(
     implicit newNode: Graph[N,_,_,_] => N,
       newEdge: (Graph[N,_,E,_], N, N) => E): Rule[N,NL,E,EL] = {
     val n = for (n <- lhs.nodes if rhs.nodes contains n) yield (n, n)

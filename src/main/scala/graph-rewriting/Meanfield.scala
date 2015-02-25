@@ -8,7 +8,7 @@ object meanfield {
   // --- Transformers ---
 
   def splitConnectedComponents[N,NL,E<:DiEdgeLike[N],EL](
-    g: Graph[N,NL,E,EL]): Option[Pn[N,NL,E,EL]] =
+    g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
     if (g.isConnected) None else Some(Mn(g.components))
 
 
@@ -22,17 +22,17 @@ object meanfield {
   def mfa[NL,EL](
     rules: Traversable[Rule[N,NL,E,EL]],
     observables: Seq[Graph[N,NL,E,EL]],
-    transformers: (Graph[N,NL,E,EL] => Option[Pn[N,NL,E,EL]])*)
+    transformers: (Graph[N,NL,E,EL] => Option[Mn[N,NL,E,EL]])*)
       : Vector[Eq[N,NL,E,EL]] =
     mfa(mfaMaxIter, rules, observables, transformers:_*)
 
   def mfa[NL,EL](maxIter: Int,
     rules: Traversable[Rule[N,NL,E,EL]],
     observables: Seq[Graph[N,NL,E,EL]],
-    transformers: (Graph[N,NL,E,EL] => Option[Pn[N,NL,E,EL]])*)
+    transformers: (Graph[N,NL,E,EL] => Option[Mn[N,NL,E,EL]])*)
       : Vector[Eq[N,NL,E,EL]] = {
 
-    val reversedRules = rules.map(r => (r, r.reversed)).toMap
+    val reversedRules = rules.map(r => (r, r.reversed())).toMap
     val ti = transformers.zipWithIndex
 
     @tailrec
@@ -46,16 +46,15 @@ object meanfield {
             else loop(i, tl, eqs :+ AlgEq(hd, Mn(eq.lhs)))
           }
           case None => {
-            val pi = for ((t, i) <- ti; p <- t(hd)) yield (p, i)
-            if (pi.length > 1)
+            val mi = for ((t, i) <- ti; m <- t(hd)) yield (m, i)
+            if (mi.length > 1)
               println("more than one transformation (" +
-                pi.map(_._2).mkString(",") + ") found for " + hd)
-            if (pi.nonEmpty) {
+                mi.map(_._2).mkString(",") + ") found for " + hd)
+            if (mi.nonEmpty) {
               // add algebraic equation provided by the transformation
-              val p = pi.head._1
-              // simplifying here can save us some work later
-              val eq = AlgEq(hd, p.simplify)
-              loop(i, tl ++ p.graphs, eqs :+ eq)
+              val m = mi.head._1
+              val eq = AlgEq(hd, m)
+              loop(i, tl ++ m.graphs, eqs :+ eq)
             } else if (i < maxIter) { // create an ode only if i < maxIter
               // no transformation is aplicable to hd
               val p = Pn((for (r <- rules) yield {
@@ -74,6 +73,7 @@ object meanfield {
                        if Graph.iso(mg, rmg))
                   yield (r.rate * lmg)
                 deletions ++ additions
+              // simplifying here can save us some work later
               }).flatten.toVector).simplify
               loop(i+1, tl ++ p.graphs, eqs :+ ODE(hd, p))
             }

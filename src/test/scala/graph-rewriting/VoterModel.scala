@@ -17,13 +17,13 @@ object VoterModel {
     val bwr = rbw + e3; rwb -= e1
 
     // Flipping rules
-    val b2r = Rule(rb, rr, 1)
-    val r2b = Rule(rb, bb, 10)
+    val b2r = Rule(rb, rr, "Ibr")
+    val r2b = Rule(rb, bb, "Irb")
     // TODO: missing rules where edge is blue to red
 
     // Flapping rules
-    val flaprb = Rule(rbw, rwb, 100)
-    val flapbr = Rule(rbw, bwr, 1000)
+    val flapbr = Rule(rbw, bwr, "Abr")
+    val flaprb = Rule(rbw, rwb, "Arb")
     // TODO: same missing rules here (see above)
 
     // For rewire-to-same rules, uncomment these lines
@@ -46,17 +46,17 @@ object VoterModel {
     val r = G("u" -> "red")()
 
     // Transformers
-    def paPn(g: Graph[N,NL,E,EL], n1: N, n2: N, n3: N) =
-      Pn(Mn(g.inducedSubgraph(Set(n1, n2))) *
-            g.inducedSubgraph(Set(n2, n3)) /
-            g.inducedSubgraph(Set(n2))) // n2 is intersection
+    def paMn(g: Graph[N,NL,E,EL], n1: N, n2: N, n3: N) =
+      Mn(g.inducedSubgraph(Set(n1, n2))) *
+         g.inducedSubgraph(Set(n2, n3)) /
+         g.inducedSubgraph(Set(n2)) // n2 is intersection
 
     // TODO: How can we make the splitting mechanism more generic?
     // Of course, paPn should have Set[N], Set[N] as parameters and
     // the intersection should be computed from these 2 sets, but the
     // hard part is how to split g.nodes into these 2 sets.
     def pairApproximation(g: Graph[N,NL,E,EL])
-        : Option[Pn[N,NL,E,EL]] =
+        : Option[Mn[N,NL,E,EL]] =
       if (g.nodes.size == 3 && g.isConnected) {
         // extract the 3 nodes from the graph
         val Seq(n1, n2, n3) = g.nodes.toSeq
@@ -66,18 +66,18 @@ object VoterModel {
         // of the chain (assuming it's not a triangle)
         if (nbs.size == 1) {
           // if that neighbour is n2, then that's the intersection
-          if (nbs contains n2) Some(paPn(g, n1, n2, n3))
+          if (nbs contains n2) Some(paMn(g, n1, n2, n3))
           // otherwise n3 must be the intersection
-          else Some(paPn(g, n1, n3, n2))
+          else Some(paMn(g, n1, n3, n2))
           // if n1 has two neighbours, then n1 is the intersection
-        } else Some(paPn(g, n2, n1, n3))
+        } else Some(paMn(g, n2, n1, n3))
         // NOTE: the triangle case is not handled by this function
         // and in case one is given, it will destroy the edge between
         // n2 and n3
       } else None
 
     def destroyParallelEdges(g: Graph[N,NL,E,EL])
-        : Option[Pn[N,NL,E,EL]] = {
+        : Option[Mn[N,NL,E,EL]] = {
       val h = g.copy
       var parallelEdges = false
       for {
@@ -94,7 +94,7 @@ object VoterModel {
             "can't merge them.")
         h.delEdges(u2v.tail)
       }
-      if (parallelEdges) Some(Pn(h))
+      if (parallelEdges) Some(Mn(h))
       else None
     }
 
@@ -103,7 +103,7 @@ object VoterModel {
       splitConnectedComponents[N,NL,E,EL] _,
       pairApproximation _,
       destroyParallelEdges _)
-    eqs.printEqs
+    ODEPrinter(eqs).print
   }
 }
 

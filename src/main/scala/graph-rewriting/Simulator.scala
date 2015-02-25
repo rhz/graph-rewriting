@@ -44,7 +44,7 @@ class Simulator[N,NL,E<:DiEdgeLike[N],EL] {
 
       // Compute rule propensities
       val propensities = for (r <- rules) yield
-        (r.rate * matches(r.lhs).length)
+        (r.rate.value * matches(r.lhs).length)
 
       // Build the propensity tree
       val tree = RandomTree(propensities, rand)

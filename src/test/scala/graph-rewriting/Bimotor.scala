@@ -21,18 +21,18 @@ object Bimotor {
       bc2, bc3, c1c2)
     val g4 = G("b" -> "bimotor", "c1" -> "chain")(bc0, bc1)
     val fe = Rule(g1, g2, Map("b" -> "b", "c1" -> "c1", "c2" -> "c2"),
-      Map(c1c2 -> c1c2, bc1 -> bc1), 1)
+      Map(c1c2 -> c1c2, bc1 -> bc1), "kFE")
     val fc = Rule(g2, g3, Map("b" -> "b", "c1" -> "c1", "c2" -> "c2"),
-      Map(c1c2 -> c1c2, bc2 -> bc2), 100)
-    val bc = fe.reversed; bc.rate = 10
-    val be = fc.reversed; be.rate = 1000
+      Map(c1c2 -> c1c2, bc2 -> bc2), "kFC")
+    val bc = fe.reversed("kBC")
+    val be = fc.reversed("kBE")
 
     // Transformations
-    def invariant(g: Graph[N,NL,E,EL]): Option[Pn[N,NL,E,EL]] =
+    def invariant(g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
       if (Graph.iso(g, g1) || Graph.iso(g, g3)) Some(Mn(g4))
       else None
 
-    def reachable(g: Graph[N,NL,E,EL]): Option[Pn[N,NL,E,EL]] = {
+    def reachable(g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] = {
       val bs = g.nodes collect {
         case n if g(n).label == Some("bimotor") => n }
       val cs = g.nodes collect {
@@ -41,12 +41,12 @@ object Bimotor {
           (cs.size <= 2) && (cs.toSeq.combinations(2) forall {
             case Seq(u, v) => ((g(u) edgesWith v).size == 1) }))
         None
-      else Some(Pn.empty) // Pn.empty = zero
+      else Some(Mn.zero[N,NL,E,EL])
     }
 
     val eqs = mfa(List(fe, fc, bc, be), List(g1, g2, g3),
       invariant _, reachable _)
-    eqs.printEqs
+    ODEPrinter(eqs).print
   }
 }
 

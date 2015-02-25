@@ -234,34 +234,34 @@ class RuleSpec extends FlatSpec with Matchers {
     // add node
     val l1 = G(1 -> "A")()
     val r1 = G(1 -> "A", 2 -> "A")()
-    Rule(l1, r1, Map(1 -> 1), Map()).actions shouldBe Seq(
+    Rule(l1, r1, Map(1 -> 1), Map(), "k1").actions shouldBe Seq(
       AddNode(l1, r1, Map(1 -> 1), Map(), 2))
     // del node
     val l2 = G(1 -> "A", 2 -> "A")()
     val r2 = G(1 -> "A")()
-    Rule(l2, r2, Map(1 -> 1), Map()).actions shouldBe Seq(
+    Rule(l2, r2, Map(1 -> 1), Map(), "k2").actions shouldBe Seq(
       DelNode(l2, r2, Map(1 -> 1), Map(), 2))
     // set node
     val e1 = 1 ~~> 2
     val l3 = G(1 -> "A", 2 -> "A")(e1)
     val r3 = G(1 -> "B", 2 -> "A")(e1)
-    Rule(l3, r3, Map(1 -> 1, 2 -> 2), Map(e1 -> e1)).actions shouldBe
+    Rule(l3, r3, Map(1 -> 1, 2 -> 2), Map(e1 -> e1), "k3").actions shouldBe
       Seq(SetNodeLabel(l3, r3, Map(1 -> 1, 2 -> 2), Map(e1 -> e1), 1))
     // add edge
     val l4 = G(1 -> "A", 2 -> "B")()
     val r4 = G(1 -> "A", 2 -> "B")(e1)
-    Rule(l4, r4, Map(1 -> 1, 2 -> 2), Map()).actions shouldBe Seq(
+    Rule(l4, r4, Map(1 -> 1, 2 -> 2), Map(), "k4").actions shouldBe Seq(
       AddEdge(l4, r4, Map(1 -> 1, 2 -> 2), Map(), e1))
     // del edge
     val l5 = G(1 -> "A", 2 -> "B")(e1)
     val r5 = G(1 -> "A", 2 -> "B")()
-    Rule(l5, r5, Map(1 -> 1, 2 -> 2), Map()).actions shouldBe Seq(
+    Rule(l5, r5, Map(1 -> 1, 2 -> 2), Map(), "k5").actions shouldBe Seq(
       DelEdge(l5, r5, Map(1 -> 1, 2 -> 2), Map(), e1))
     // set edge
     val l6 = G(1 -> "A", 2 -> "A")(e1)
     val r6 = G(1 -> "A", 2 -> "A")(e1)
     r6(e1).label = "a label"
-    Rule(l6, r6, Map(1 -> 1, 2 -> 2), Map(e1 -> e1)).actions shouldBe
+    Rule(l6, r6, Map(1 -> 1, 2 -> 2), Map(e1 -> e1), "k6").actions shouldBe
       Seq(SetEdgeLabel(l6, r6, Map(1 -> 1, 2 -> 2), Map(e1 -> e1), e1))
     // all of them
     val e2 = 2 ~~> 1
@@ -270,7 +270,7 @@ class RuleSpec extends FlatSpec with Matchers {
     val r7 = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     l7(e3).label = "label 1"
     r7(e3).label = "label 2"
-    Rule(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3)).actions shouldBe
+    Rule(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), "k7").actions shouldBe
       Seq(AddNode(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 3),
           DelNode(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 0),
           SetNodeLabel(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 1),
@@ -287,7 +287,7 @@ class RuleSpec extends FlatSpec with Matchers {
     val rhs = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     lhs(e3).label = "label 1"
     rhs(e3).label = "label 2"
-    val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3))
+    val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), "k")
     val mix = G(0 -> "A", 1 -> "A", 2 -> "A", 3 -> "A")(e1, e3)
     val m = Arrow(lhs, mix, Map(0 -> 0, 1 -> 1, 2 -> 2),
       Map(e1 -> e1, e3 -> e3))
@@ -313,8 +313,8 @@ class RuleSpec extends FlatSpec with Matchers {
     val rhs = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     lhs(e3).label = "label 1"
     rhs(e3).label = "label 2"
-    val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3))
-    val inv = r.reversed
+    val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), "k")
+    val inv = r.reversed("ki")
     inv shouldBe a [Rule[_,_,_,_]]
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
@@ -333,14 +333,14 @@ class RuleSpec extends FlatSpec with Matchers {
     val rhs = G(1 -> "B", 2 -> "A", 3 -> "A")(e2, e3)
     lhs(e3).label = "label 1"
     rhs(e3).label = "label 2"
-    val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3))
+    val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), "k")
     val mix = G(0 -> "A", 1 -> "A", 2 -> "A", 3 -> "A")(e1, e3)
     mix(e3).label = "label 1"
     val copy = mix.copy
     val m = Arrow(lhs, mix, Map(0 -> 0, 1 -> 1, 2 -> 2),
       Map(e1 -> e1, e3 -> e3))
     val (comatch, _, _) = r(m)
-    val (m2, _, _) = r.reversed(comatch)
+    val (m2, _, _) = r.reversed()(comatch)
     m.dom shouldBe m2.dom
     m.cod shouldBe m2.cod
     // TODO: How do we test for isomorphic matches?
@@ -353,12 +353,12 @@ class RuleSpec extends FlatSpec with Matchers {
     // del node
     val lhs = G(1 -> "A")()
     val rhs = G()()
-    val r = Rule(lhs, rhs, Map(), Map())
+    val r = Rule(lhs, rhs, Map(), Map(), "k")
     val mix = G(1 -> "A", 2 -> "A")(1 ~~> 2)
     val copy = mix.copy
     val m = Arrow(lhs, mix, Map(1 -> 1), Map())
     val (comatch, _, _) = r(m)
-    val (m2, _, _) = r.reversed(comatch)
+    val (m2, _, _) = r.reversed()(comatch)
     assert(!Graph.iso(copy, m2.cod))
     /*
     // TODO: Should this be the case?
@@ -372,7 +372,7 @@ class RuleSpec extends FlatSpec with Matchers {
     val copy = mix.copy
     val m = Arrow(lhs, mix, Map(1 -> 1, 2 -> 2), Map(e -> e))
     val (comatch, _, _) = r(m)
-    val (m2, _, _) = r.reversed(comatch)
+    val (m2, _, _) = r.reversed()(comatch)
     println(s"copy = $copy")
     println(s"m2.cod = ${m2.cod}")
     println(s"m2.cod.edgelabels = ${m2.cod.edgelabels}")

@@ -355,6 +355,8 @@ object Graph {
 
   // --- Isomorphisms ---
 
+  // TODO: Maybe I should memoise and make some statistics about
+  // the frequency at which I ask for the same two graphs.
   /** Graph isomorphism test. */
   def iso[N,NL,E<:DiEdgeLike[N],EL](
     g1: Graph[N,NL,E,EL], g2: Graph[N,NL,E,EL]): Boolean =
