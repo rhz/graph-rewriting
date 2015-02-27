@@ -12,6 +12,8 @@ abstract class EdgeLike[N] {
   final def isUndirected = !isDirected
   final def nonHyperEdge = !isHyperEdge
   final def nonLooping = !isLooping
+  type This[M] <: EdgeLike[M]
+  def copy[M](source: M, target: M): This[M]
 }
 
 trait DiEdgeLike[N] extends EdgeLike[N] {
@@ -23,9 +25,13 @@ trait DiEdgeLike[N] extends EdgeLike[N] {
   def isDirected = true
   def isHyperEdge = false
   def isLooping = source == target
+  type This[M] <: DiEdgeLike[M]
 }
 
-case class DiEdge[N](source: N, target: N) extends DiEdgeLike[N]
+case class DiEdge[N](source: N, target: N) extends DiEdgeLike[N] {
+  type This[M] = DiEdge[M]
+  def copy[M](source: M, target: M): This[M] = DiEdge(source, target)
+}
 
 object ~> {
   def unapply[N](e: DiEdge[N]): Option[(N, N)] =
@@ -33,7 +39,11 @@ object ~> {
 }
 
 // For multigraphs
-case class IdDiEdge[I,N](id: I, source: N, target: N) extends DiEdgeLike[N]
+case class IdDiEdge[I,N](id: I, source: N, target: N)
+    extends DiEdgeLike[N] {
+  type This[M] = IdDiEdge[I,M]
+  def copy[M](source: M, target: M): This[M] = IdDiEdge(id, source, target)
+}
 
 // Fancy syntax for IdDiEdge?
 

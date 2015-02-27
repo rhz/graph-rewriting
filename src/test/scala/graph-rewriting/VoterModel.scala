@@ -104,6 +104,11 @@ object VoterModel {
       pairApproximation _,
       destroyParallelEdges _)
     ODEPrinter(eqs).print
+    ODEPrinter(eqs).saveAsOctave("voter.m", 10.0, 1000,
+      // Initial state is random here no?
+      // TODO: I should add a `saveAsOctave` method that takes a Graph
+      // as input to determine the number of instances of the observables
+      g => 0.0)
   }
 }
 

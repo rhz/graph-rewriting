@@ -13,7 +13,7 @@ object Bimotor {
     val bc2 = "b" ~~> "c2"
     val bc3 = "b" ~~> "c2"
     val c1c2 = "c1" ~~> "c2"
-    val g1 = G(("b", "bimotor"), "c1" -> "chain", "c2" -> "chain")(
+    val g1 = G("b" -> "bimotor", "c1" -> "chain", "c2" -> "chain")(
       bc0, bc1, c1c2)
     val g2 = G("b" -> "bimotor", "c1" -> "chain", "c2" -> "chain")(
       bc1, bc2, c1c2)
@@ -41,12 +41,14 @@ object Bimotor {
           (cs.size <= 2) && (cs.toSeq.combinations(2) forall {
             case Seq(u, v) => ((g(u) edgesWith v).size == 1) }))
         None
-      else Some(Mn.zero[N,NL,E,EL])
+      else Some(Mn.zero)
     }
 
     val eqs = mfa(List(fe, fc, bc, be), List(g1, g2, g3),
       invariant _, reachable _)
     ODEPrinter(eqs).print
+    ODEPrinter(eqs).saveAsOctave("bimotor.m", 5.0, 1000,
+      g => if (g eq g4) 1.0 else 0.0)
   }
 }
 

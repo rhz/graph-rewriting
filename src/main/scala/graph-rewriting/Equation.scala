@@ -8,6 +8,8 @@ import implicits._
 
 case class UnsupportedOperation(msg: String)
     extends IllegalArgumentException(msg)
+case class MissingODE(msg: String)
+    extends IllegalStateException(msg)
 
 /** Rate monomials. */
 case class RateMn(
@@ -363,8 +365,9 @@ case class ODE[N,NL,E<:DiEdgeLike[N],EL](
 // Naming of graphs
 // NOTE: It is assumed that a class extending GraphNaming will give
 // the same name to all graphs in an isomorphism class.
-abstract class GraphNaming[N,NL,E<:DiEdgeLike[N],EL] {
-  def apply(g: Graph[N,NL,E,EL]): String
+abstract class GraphNaming[N,NL,E<:DiEdgeLike[N],EL]
+    extends (Graph[N,NL,E,EL] => String) {
+  // def apply(g: Graph[N,NL,E,EL]): String
   def seq: Traversable[(Graph[N,NL,E,EL], String)]
 }
 class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL](start: Int = 0)
@@ -388,8 +391,7 @@ class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL](start: Int = 0)
 
 
 class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
-  eqs: Traversable[Eq[N,NL,E,EL]],
-  name: GraphNaming[N,NL,E,EL]) {
+  eqs: Traversable[Eq[N,NL,E,EL]]) {
 
   // Split algebraic equations into substitutions and cancellations
   // A cancellation is a substitution by zero
@@ -434,34 +436,118 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
   def simplify: Traversable[ODE[N,NL,E,EL]] =
     for (ODE(lhs, rhs) <- eqs) yield ODE(lhs, substitutePn(rhs))
 
-  def print(): Unit = {
-
-    val lines = for (ODE(lhs, rhs) <- simplify) yield (
-      s"d${name(lhs)} = " + (
-        if (rhs.isEmpty) "0"
-        else rhs.terms.map(strMn(_)).mkString(" + ")))
-
-    // Print fragments names
-    for ((g, n) <- name.seq) println(s"$n := $g")
-    println()
-
-    // Print the system of diff eqs
-    lines foreach (println(_))
-  }
-
-  def strMn(m: Mn[N,NL,E,EL]): String =
+  def strMn[T](m: Mn[N,NL,E,EL], name: Graph[N,NL,E,EL] => T): String =
     (if (m.coef == RatePn.one) ""
      else s"${m.coef}" + (if (m.numer.isEmpty) "" else " * ")) +
      m.numer.map(name(_)).mkString(" * ") +
     (if (m.denom.isEmpty) ""
      else if (m.denom.length == 1) s" / ${name(m.denom.head)}"
      else " / (" + m.denom.map(name(_)).mkString(" * ") + ")")
+
+  def strGraph(g: Graph[N,NL,E,EL]): String = {
+    val nm = g.nodes.zipWithIndex.toMap
+    val em = (for (e <- g.edges) yield
+      (e, e.copy(nm(e.source), nm(e.target)))).toMap
+    val nl = for ((n, l) <- g.nodelabels) yield (nm(n), l)
+    val el = for ((e, l) <- g.edgelabels) yield (em(e), l)
+    g.stringPrefix + "(" +
+      "nodes = Set(" + nm.values.mkString(", ") + "), " +
+      "edges = Set(" + em.values.mkString(", ") + ")" +
+      (if (g.nodelabels.nonEmpty) s", nodelabels = $nl" else "") +
+      (if (g.edgelabels.nonEmpty) s", edgelabels = $el" else "") + ")"
+  }
+
+  def print: Unit =
+    print(new IncrementalNaming[N,NL,E,EL]())
+
+  def print(name: GraphNaming[N,NL,E,EL]): Unit = {
+
+    val lines = for (ODE(lhs, rhs) <- simplify) yield (
+      s"d${name(lhs)} = " + (
+        if (rhs.isEmpty) "0"
+        else rhs.terms.map(strMn(_, name)).mkString(" + ")))
+
+    // Print fragments names
+    for ((g, n) <- name.seq) println(s"$n := ${strGraph(g)}")
+    println()
+
+    // Print the system of diff eqs
+    lines foreach (println(_))
+  }
+
+  // def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+  //   g0: Graph[N,NL,E,EL]): Unit =
+  //   saveAsOctave(filename, 0.0, finalTime, numSteps,
+  //     g => Graph.arrows(g0, g).length)
+
+  def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+    init: Graph[N,NL,E,EL] => Double): Unit =
+    saveAsOctave(filename, 0.0, finalTime, numSteps, init)
+
+  // def saveAsOctave(filename: String, startTime: Double,
+  //   finalTime: Double, numSteps: Int, g0: Graph[N,NL,E,EL]): Unit =
+  //   saveAsOctave(filename, startTime, finalTime, numSteps,
+  //     g => Graph.arrows(g0, g).length)
+
+  def saveAsOctave(
+    filename: String,
+    startTime: Double,
+    finalTime: Double,
+    numSteps: Int,
+    init: Graph[N,NL,E,EL] => Double)
+      : Unit = {
+    val out = new java.io.PrintWriter(filename)
+    val odes = simplify.toSeq // TODO: do we really need Seq to have zipWithIndex?
+    out.println("# Associated graph observables:")
+    val index = (for ((ODE(g, _), i) <- odes.zipWithIndex) yield
+      (g, i+1)).toMap.withDefault(g => throw new MissingODE(
+        "system of differential equations is not closed " +
+        "(missing ODE for graph " + g + ")."))
+    for ((ODE(g, _), i) <- odes.zipWithIndex)
+      out.println(s"#   x(${i+1}) := ${strGraph(g)}")
+    out.println("function xdot = f(x, t)")
+    out.println("  # Rates:")
+    val rates = (for {
+      ODE(_, rhs) <- odes
+      Mn(rp, _, _) <- rhs.terms
+      rm <- rp.terms
+      k <- rm.numer ++ rm.denom
+    } yield k).toSet
+    for (k <- rates)
+      out.println(s"  ${k.name} = ${k.value};")
+    out.println("  # ODEs:")
+    for ((ODE(g, rhs), i) <- odes.zipWithIndex)
+      out.println(s"  xdot(${i+1}) = " + (if (rhs.isEmpty) "0" else
+        rhs.terms.map(strMn(_, h => s"x(${index(h)})")).mkString(" + ")) + ";")
+    out.println("endfunction")
+    out.println
+    out.println("# Initial conditions:")
+    val x0 = for (ODE(g, _) <- odes) yield init(g)
+    out.println("x0 = " + x0.mkString("[ ", ", ", " ]") + ";")
+    out.println
+    out.println(s"t = linspace($startTime, $finalTime, $numSteps" +
+      ");  # Output times")
+    out.println("x = lsode(\"f\", x0, t);  # Solve ODEs")
+    out.println("printf(\"time " +
+      (1 to odes.length).map(i => s"E(x($i))").mkString(" ") +
+      "\\n\");  # Print header")
+    out.println("printf(\"%e " +
+      (1 to odes.length).map(_ => "%e").mkString(" ") +
+      "\\n\", cat(1, t, " +
+      (1 to odes.length).map(i => s"x(:, $i)'").mkString(", ") +
+      "));  # Print data")
+    out.flush
+    out.close
+  }
+
+  // NOTE: Probably a good idea is to use dot2tex to generate TikZ
+  // code for the graphs: https://github.com/kjellmf/dot2tex
+  // def saveAsLatex(filename: String) = {
+  // }
 }
 
 object ODEPrinter {
-  def apply[N,NL,E<:DiEdgeLike[N],EL](eqs: Traversable[Eq[N,NL,E,EL]]) =
-    new ODEPrinter(eqs, new IncrementalNaming[N,NL,E,EL]())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](eqs: Traversable[Eq[N,NL,E,EL]],
-    name: GraphNaming[N,NL,E,EL]) = new ODEPrinter(eqs, name)
+  def apply[N,NL,E<:DiEdgeLike[N],EL](
+    eqs: Traversable[Eq[N,NL,E,EL]]) = new ODEPrinter(eqs)
 }
 
