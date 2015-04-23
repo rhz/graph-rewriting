@@ -20,9 +20,9 @@ class Graph[N,NL,E<:EdgeLike[N],EL] {
 
   def stringPrefix = "Graph"
   override def toString = s"$stringPrefix(" +
-  s"nodes = $nodes, edges = $edges" +
-  (if (nodelabels.nonEmpty) s", nodelabels = $nodelabels" else "") +
-  (if (edgelabels.nonEmpty) s", edgelabels = $edgelabels" else "") + ")"
+    s"nodes = $nodes, edges = $edges" +
+    (if (nodelabels.nonEmpty) s", nodelabels = $nodelabels" else "") +
+    (if (edgelabels.nonEmpty) s", edgelabels = $edgelabels" else "") + ")"
 
   def copy = {
     val g = new Graph[N,NL,E,EL]
@@ -334,7 +334,7 @@ object Graph {
     g
   }
 
-  def apply[N,NL,E<:EdgeLike[N],EL](): Graph[N,NL,E,EL] =
+  def empty[N,NL,E<:EdgeLike[N],EL]: Graph[N,NL,E,EL] =
     const(List(), List())
 
   // def apply[N,NL,E<:EdgeLike[N],EL](
@@ -352,6 +352,17 @@ object Graph {
     def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
       const(nodes, edges)
   }
+
+
+  // --- Arrows ---
+  /** Returns all arrows (i.e. the hom-set) from `g` to `h`. */
+  /*
+  def arrows[N,NL,E<:DiEdgeLike[N],EL](
+    g: Graph[N,NL,E,EL], h: Graph[N,NL,E,EL])
+      : Vector[Arrow[N,NL,E,EL,N,NL,E,EL]] = {
+  }
+  */
+
 
   // --- Isomorphisms ---
 
@@ -595,6 +606,7 @@ object Graph {
 
     if (g1.nodes.size == 1 && g2.nodes.size == 1) {
       if (g1(g1.nodes.head).label == g2(g2.nodes.head).label)
+        // FIXME: What if `gi.nodes.head` has self-loops?
         Some(Arrow(g1, g2, Map(g1.nodes.head -> g2.nodes.head),
           Map.empty[E,E]))
       else None
@@ -620,6 +632,7 @@ object Graph {
       }
     }
   }
+
 
   // --- Intersections and Unions ---
 

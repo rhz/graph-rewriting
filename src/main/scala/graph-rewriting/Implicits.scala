@@ -15,6 +15,7 @@ object implicits {
     else id
   }
 
+
   // -- Edges --
   final implicit class DiEdgeConst[N](n1: N) {
     def ~> (n2: N) = DiEdge(n1, n2)
@@ -28,10 +29,12 @@ object implicits {
     u: N, v: N) = new IdDiEdge(next(g(u) edgesTo v map {
       case IdDiEdge(id,_,_) => id }), u, v)
 
+
   // -- Maps --
   final implicit class InvertibleMap[A,B](m: Map[A,B]) {
     def inverse = m map (_.swap)
   }
+
 
   // -- Rate monomials and polynomials --
   implicit def nameToRate(name: String) = Rate(name)
@@ -41,6 +44,7 @@ object implicits {
   implicit def nameToRPn(name: String) = RatePn(RateMn(Rate(name)))
   implicit def rateToRPn(k: Rate) = RatePn(RateMn(k))
   implicit def rateMnToRPn(rm: RateMn) = RatePn(rm)
+
 
   // -- Graph monomials and polynomials --
   // Rates don't have required type information
@@ -58,6 +62,7 @@ object implicits {
     g: Graph[N,NL,E,EL]) = Pn[N,NL,E,EL](Mn(g))
   implicit def mnToPn[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
     Pn[N,NL,E,EL](m)
+
 
   // -- Graph --
   implicit def withLabel[T,U](x: (T,U)) = (x._1, Some(x._2))

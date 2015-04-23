@@ -1,7 +1,7 @@
 package graph_rewriting
 
 import implicits._
-import meanfield._ // imports types N = String and E = IdDiEdge[Int,N]
+import moments._ // imports types N = String and E = IdDiEdge[Int,N]
 
 object Rabbits {
   val G = Graph.withType[N,Unit,E,Unit]
@@ -16,10 +16,10 @@ object Rabbits {
     val family = Rule(one, two, Map("father" -> "father",
       "mother" -> "mother", "daughter" -> "daughter"),
       Map(e1 -> e1, e2 -> e2), "k2")
-    val eqs = mfa(List(sex, family), List(two),
+    val odes = generateMeanODEs(10, List(sex, family), List(two),
       splitConnectedComponents[N,Unit,E,Unit] _)
-    ODEPrinter(eqs).print
-    ODEPrinter(eqs).saveAsOctave("rabbits.m", 0.7, 1000,
+    ODEPrinter(odes).print
+    ODEPrinter(odes).saveAsOctave("rabbits.m", 0.7, 1000,
       g => if (Graph.iso(g, G("rabbit")())) 1.0 else 0.0)
   }
 }

@@ -257,6 +257,12 @@ object Mn {
     new Mn[N,NL,E,EL](rp, numer.toVector, denom.toVector)
   def unapply[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
     Some(m.coef, m.numer, m.denom)
+
+  // TODO: Pair approximation
+  // def pairApproximation[N,NL,E<:DiEdgeLike[N],EL](
+  //   g: Graph[N,NL,E,EL], intersection: (Set[N], Set[E])): Mn[N,NL,E,EL]
+
+  // TODO: Approximate master equation... What is this exactly?
 }
 
 
@@ -433,7 +439,7 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
   def hasZero(gs: Traversable[Graph[N,NL,E,EL]]): Boolean =
     gs exists (zeros contains _)
 
-  def simplify: Traversable[ODE[N,NL,E,EL]] =
+  lazy val simplify: Traversable[ODE[N,NL,E,EL]] =
     for (ODE(lhs, rhs) <- eqs) yield ODE(lhs, substitutePn(rhs))
 
   def strMn[T](m: Mn[N,NL,E,EL], name: Graph[N,NL,E,EL] => T): String =
@@ -484,17 +490,27 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
     init: Graph[N,NL,E,EL] => Double): Unit =
     saveAsOctave(filename, 0.0, finalTime, numSteps, init)
 
+  def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+    init: Traversable[Double]): Unit =
+    saveAsOctave(filename, 0.0, finalTime, numSteps, init)
+
   // def saveAsOctave(filename: String, startTime: Double,
   //   finalTime: Double, numSteps: Int, g0: Graph[N,NL,E,EL]): Unit =
   //   saveAsOctave(filename, startTime, finalTime, numSteps,
   //     g => Graph.arrows(g0, g).length)
+
+  def saveAsOctave(filename: String, startTime: Double,
+    finalTime: Double, numSteps: Int,
+    init: Graph[N,NL,E,EL] => Double): Unit =
+    saveAsOctave(filename, startTime, finalTime, numSteps,
+      for (ODE(g,_) <- simplify) yield init(g))
 
   def saveAsOctave(
     filename: String,
     startTime: Double,
     finalTime: Double,
     numSteps: Int,
-    init: Graph[N,NL,E,EL] => Double)
+    init: Traversable[Double])
       : Unit = {
     val out = new java.io.PrintWriter(filename)
     val odes = simplify.toSeq // TODO: do we really need Seq to have zipWithIndex?
@@ -522,8 +538,7 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
     out.println("endfunction")
     out.println
     out.println("# Initial conditions:")
-    val x0 = for (ODE(g, _) <- odes) yield init(g)
-    out.println("x0 = " + x0.mkString("[ ", ", ", " ]") + ";")
+    out.println("x0 = " + init.mkString("[ ", ", ", " ]") + ";")
     out.println
     out.println(s"t = linspace($startTime, $finalTime, $numSteps" +
       ");  # Output times")

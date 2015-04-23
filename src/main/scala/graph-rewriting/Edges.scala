@@ -45,5 +45,5 @@ case class IdDiEdge[I,N](id: I, source: N, target: N)
   def copy[M](source: M, target: M): This[M] = IdDiEdge(id, source, target)
 }
 
-// Fancy syntax for IdDiEdge?
+// Fancy syntax for IdDiEdge?  In Implicits.scala
 

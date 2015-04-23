@@ -3,10 +3,14 @@ package graph_rewriting
 import scala.annotation.tailrec
 import implicits._
 
-object meanfield {
+object moments {
 
   // --- Transformers ---
 
+  /** Transforms a disconnected graph observable `[A+B+...+C]` into
+    * the graph monomial `[A]*[B]*...*[C]`.
+    * If graph is connected, returns None.
+    */
   def splitConnectedComponents[N,NL,E<:DiEdgeLike[N],EL](
     g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
     if (g.isConnected) None else Some(Mn(g.components))
@@ -14,19 +18,24 @@ object meanfield {
 
   // --- Fragmentation ---
 
-  val mfaMaxIter: Int = 20
-
   type N = String
   type E = IdDiEdge[Int, N]
 
-  def mfa[NL,EL](
-    rules: Traversable[Rule[N,NL,E,EL]],
-    observables: Seq[Graph[N,NL,E,EL]],
-    transformers: (Graph[N,NL,E,EL] => Option[Mn[N,NL,E,EL]])*)
-      : Vector[Eq[N,NL,E,EL]] =
-    mfa(mfaMaxIter, rules, observables, transformers:_*)
-
-  def mfa[NL,EL](maxIter: Int,
+  /** Discover at most `maxNumODEs` ordinary differential equations
+    * for the mean ocurrence count of a given set of graph
+    * `observables` and the graph observables they depend on,
+    * under the given set of `rules`.
+    * Optionally, a set of `transformers` can be provided.
+    * These will be applied to each observable and if some graph
+    * monomial is returned, the observable will be equated to that
+    * monomial and no ODE will be generated for it.
+    * When no monomial is returned (i.e. `None`), an ODE will be
+    * generated for that observable if the maximum number of ODEs
+    * to be generated hasn't been reached (given by `maxNumODEs`).
+    * For a transformer example, see `splitConnectedComponents`.
+    */
+  def generateMeanODEs[NL,EL](
+    maxNumODEs: Int,
     rules: Traversable[Rule[N,NL,E,EL]],
     observables: Seq[Graph[N,NL,E,EL]],
     transformers: (Graph[N,NL,E,EL] => Option[Mn[N,NL,E,EL]])*)
@@ -55,7 +64,7 @@ object meanfield {
               val m = mi.head._1
               val eq = AlgEq(hd, m)
               loop(i, tl ++ m.graphs, eqs :+ eq)
-            } else if (i < maxIter) { // create an ode only if i < maxIter
+            } else if (i < maxNumODEs) { // create an ode only if i < maxNumODEs
               // no transformation is aplicable to hd
               val p = Pn((for (r <- rules) yield {
                 val ropp: Rule[N,NL,E,EL] = reversedRules(r)

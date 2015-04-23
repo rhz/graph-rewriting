@@ -1,114 +1,78 @@
 package graph_rewriting
 
 import implicits._
-import meanfield._
+import moments._ // this imports N=String and E=IdDiEdge[Int,N]
 
 object VoterModel {
   type NL = String
   type EL = String
   val G = Graph.withType[N,NL,E,EL]
   def main(args: Array[String]): Unit = {
-    val (e1, e2, e3) = ("u" ~~> "v", "u" ~~> "w", "v" ~~> "w")
-    val rb = G("u" -> "red", "v" -> "blue")(e1)
-    val bb = G("u" -> "blue", "v" -> "blue")(e1)
-    val rr = G("u" -> "red", "v" -> "red")(e1)
-    val rbw = rb + "w"
-    val rwb = rbw + e2; rwb -= e1
-    val bwr = rbw + e3; rwb -= e1
-
-    // Flipping rules
-    val b2r = Rule(rb, rr, "Ibr")
-    val r2b = Rule(rb, bb, "Irb")
-    // TODO: missing rules where edge is blue to red
-
-    // Flapping rules
-    val flapbr = Rule(rbw, bwr, "Abr")
-    val flaprb = Rule(rbw, rwb, "Arb")
-    // TODO: same missing rules here (see above)
-
-    // For rewire-to-same rules, uncomment these lines
-    // val r = G("w" -> "red")()
-    // val b = G("w" -> "blue")()
-    // val rrb = rb + r; rrb += e2 -= e1
-    // val rbb = rb + b; rbb += e3 -= e1
-    // val flaprb = Rule(rb + r, rrb, 100)
-    // val flapbr = Rule(rb + r, rbb, 1000)
-
-    // For rewire-to-foaf, uncomment the following
-    // val rbf = rbw + e3
-    // val rfb = rbf + e2; rfb -= e1
-    // val frb = rbw + e2
-    // val bfr = frb + e3; bfr -= e1
-    // val flaprb = Rule(rbf, rfb, 100)
-    // val flapbr = Rule(frb, bfr, 1000)
-
-    // Observables
-    val r = G("u" -> "red")()
-
-    // Transformers
-    def paMn(g: Graph[N,NL,E,EL], n1: N, n2: N, n3: N) =
-      Mn(g.inducedSubgraph(Set(n1, n2))) *
-         g.inducedSubgraph(Set(n2, n3)) /
-         g.inducedSubgraph(Set(n2)) // n2 is intersection
-
-    // TODO: How can we make the splitting mechanism more generic?
-    // Of course, paPn should have Set[N], Set[N] as parameters and
-    // the intersection should be computed from these 2 sets, but the
-    // hard part is how to split g.nodes into these 2 sets.
-    def pairApproximation(g: Graph[N,NL,E,EL])
-        : Option[Mn[N,NL,E,EL]] =
-      if (g.nodes.size == 3 && g.isConnected) {
-        // extract the 3 nodes from the graph
-        val Seq(n1, n2, n3) = g.nodes.toSeq
-        // get n1's neighbours that aren't itself
-        val nbs = g(n1).neighbours - n1
-        // if it has only one neighbour it must be on the side
-        // of the chain (assuming it's not a triangle)
-        if (nbs.size == 1) {
-          // if that neighbour is n2, then that's the intersection
-          if (nbs contains n2) Some(paMn(g, n1, n2, n3))
-          // otherwise n3 must be the intersection
-          else Some(paMn(g, n1, n3, n2))
-          // if n1 has two neighbours, then n1 is the intersection
-        } else Some(paMn(g, n2, n1, n3))
-        // NOTE: the triangle case is not handled by this function
-        // and in case one is given, it will destroy the edge between
-        // n2 and n3
+    // first flip
+    val e = "u"~~>"v"
+    val rb = G("u"->"red","v"->"blue")(e)
+    val br = G("u"->"blue","v"->"red")(e)
+    val bb = G("u"->"blue","v"->"blue")(e)
+    val k01 = Rate("k01", 0.9)
+    val flip0a = Rule(rb, bb, Map("u"->"u","v"->"v"),
+      Map(e->e), k01)
+    val flip0b = Rule(br, bb, Map("u"->"u","v"->"v"),
+      Map(e->e), k01)
+    // second flip
+    val rr = G("u"->"red","v"->"red")(e)
+    val k10 = Rate("k10", 1.1)
+    val flip1a = Rule(rb, rr, Map("u"->"u","v"->"v"),
+      Map(e->e), k10)
+    val flip1b = Rule(br, rr, Map("u"->"u","v"->"v"),
+      Map(e->e), k10)
+    // first swap (blue rewire)
+    val rbw1 = G("u"->"red","v"->"blue","w")("u"~~>"v")
+    val rbw2 = G("u"->"red","v"->"blue","w")("w"~~>"v")
+    val swap0a = Rule(rbw1, rbw2, Map("u"->"u","v"->"v","w"->"w"),
+      Map(), "k0")
+    val brw1 = G("u"->"blue","v"->"red","w")("u"~~>"v")
+    val brw2 = G("u"->"blue","v"->"red","w")("w"~~>"u")
+    val swap0b = Rule(brw1, brw2, Map("u"->"u","v"->"v","w"->"w"),
+      Map(), "k0")
+    // second swap (red rewire)
+    val rbw3 = G("u"->"red","v"->"blue","w")("w"~~>"u")
+    val swap1a = Rule(rbw1, rbw3, Map("u"->"u","v"->"v","w"->"w"),
+      Map(), "k1")
+    val brw3 = G("u"->"blue","v"->"red","w")("w"~~>"v")
+    val swap1b = Rule(brw1, brw3, Map("u"->"u","v"->"v","w"->"w"),
+      Map(), "k1")
+    def pairApproximation(g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
+      if (g.nodes.size == 3 && g.edges.size == 2 && g.isConnected) {
+        val List(e1, e2) = g.edges.toList
+        val intersection = e1.nodes &~ (e1.nodes &~ e2.nodes)
+        Mn(g.inducedSubgraph(e1.nodes)) *
+           g.inducedSubgraph(e2.nodes) /
+           g.inducedSubgraph(intersection)
       } else None
-
-    def destroyParallelEdges(g: Graph[N,NL,E,EL])
-        : Option[Mn[N,NL,E,EL]] = {
-      val h = g.copy
-      var parallelEdges = false
-      for {
-        u <- h.nodes
-        v <- h.nodes
-        u2v = h(u).edgesTo(v)
-        if u2v.size > 1
-      } {
-        parallelEdges = true
-        // we assume that all edges from u to v have the same label
-        assume(u2v.toSeq.sliding(2) forall {
-          case Seq(e1, e2) => h(e1).label == h(e2).label
-        }, s"edges from $u to $v do not have the same label, " +
-            "can't merge them.")
-        h.delEdges(u2v.tail)
-      }
-      if (parallelEdges) Some(Mn(h))
-      else None
-    }
-
-    // Fragmentation
-    val eqs = mfa(List(r2b, b2r, flaprb, flapbr), List(r),
+    def noParallelEdges(g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
+      if (g.nodes.size == 2 && g.edges.size == 2) Some(Mn.zero) else None
+    val redNode = G("u" -> "red")()
+    val twoRedNodes = G("u" -> "red", "v" -> "red")()
+    val odesWoTrans = generateMeanODEs(2,
+      List(flip0a,flip0b,flip1a,flip1b,swap0a,swap0b,swap1a,swap1b),
+      List(redNode))
+    ODEPrinter(odesWoTrans).print
+    println()
+    val odes = generateMeanODEs(10,
+      List(flip0a,flip0b,flip1a,flip1b,swap0a,swap0b,swap1a,swap1b),
+      List(redNode),
       splitConnectedComponents[N,NL,E,EL] _,
       pairApproximation _,
-      destroyParallelEdges _)
-    ODEPrinter(eqs).print
-    ODEPrinter(eqs).saveAsOctave("voter.m", 10.0, 1000,
-      // Initial state is random here no?
-      // TODO: I should add a `saveAsOctave` method that takes a Graph
-      // as input to determine the number of instances of the observables
-      g => 0.0)
+      noParallelEdges _)
+    val printer = ODEPrinter(odes)
+    printer.print
+    printer.saveAsOctave("voter.m", 0.04, 1000,
+      List(50.0,50,50,50,50,50,100)) // [0],[01],[10],[1],[00],[11],[*]
+    println()
+    val varianceODE = generateMeanODEs(1,
+      List(flip0a,flip0b,flip1a,flip1b,swap0a,swap0b,swap1a,swap1b),
+      List(twoRedNodes))
+    ODEPrinter(varianceODE).print
   }
 }
 

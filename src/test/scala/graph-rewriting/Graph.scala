@@ -111,7 +111,7 @@ class GraphSpec extends FlatSpec with Matchers {
 
   it should "be constructible" in {
 
-    val g0 = Graph[Int,String,DiEdge[Int],String]()
+    val g0 = Graph.empty[Int,String,DiEdge[Int],String]
     g0.nodes shouldBe empty
     g0.edges shouldBe empty
     g0.nodelabels shouldBe empty

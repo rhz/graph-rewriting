@@ -1,7 +1,7 @@
 package graph_rewriting
 
 import implicits._
-import meanfield._ // this imports types N = String and E = IdDiEdge[Int,N]
+import moments._ // this imports types N = String and E = IdDiEdge[Int,N]
 
 object Bimotor {
   type NL = String
@@ -44,10 +44,13 @@ object Bimotor {
       else Some(Mn.zero)
     }
 
-    val eqs = mfa(List(fe, fc, bc, be), List(g1, g2, g3),
-      invariant _, reachable _)
-    ODEPrinter(eqs).print
-    ODEPrinter(eqs).saveAsOctave("bimotor.m", 5.0, 1000,
+    val odes = generateMeanODEs(5,
+      List(fe, fc, bc, be),
+      List(g1, g2, g3),
+      invariant _,
+      reachable _)
+    ODEPrinter(odes).print
+    ODEPrinter(odes).saveAsOctave("bimotor.m", 5.0, 1000,
       g => if (g eq g4) 1.0 else 0.0)
   }
 }
