@@ -18,15 +18,15 @@ object implicits {
 
   // -- Edges --
   final implicit class DiEdgeConst[N](n1: N) {
-    def ~> (n2: N) = DiEdge(n1, n2)
+    def ~> (n2: N) = DiEdge(n1,n2)
   }
 
-  implicit class IdDiEdgeConst[N](n1: N) {
-    def ~~> (n2: N) = IdDiEdge(Counter.next, n1, n2)
+  final implicit class IdDiEdgeConst[N](n1: N) {
+    def ~~> (n2: N) = IdDiEdge(Counter.next,n1,n2)
   }
 
-  implicit def newIdDiEdge[N](g: Graph[N,_,IdDiEdge[Int,N],_],
-    u: N, v: N) = new IdDiEdge(next(g(u) edgesTo v map {
+  implicit def newIdDiEdge[N](g: DiGraph[N,_,IdDiEdge[Int,N],_],
+    u: N, v: N) = new IdDiEdge(next(g(u) edgesTo v collect {
       case IdDiEdge(id,_,_) => id }), u, v)
 
 
@@ -57,16 +57,17 @@ object implicits {
   // implicit def ratePnToMn(rp: RatePn) = Mn(rp)
   // implicit def ratePnToPn(rp: RatePn) = Pn(Mn(rp))
   implicit def graphToMn[N,NL,E<:DiEdgeLike[N],EL](
-    g: Graph[N,NL,E,EL]): Mn[N,NL,E,EL] = Mn(g)
+    g: DiGraph[N,NL,E,EL]): Mn[N,NL,E,EL,DiGraph] = Mn(g)
   implicit def graphToPn[N,NL,E<:DiEdgeLike[N],EL](
-    g: Graph[N,NL,E,EL]) = Pn[N,NL,E,EL](Mn(g))
-  implicit def mnToPn[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
-    Pn[N,NL,E,EL](m)
+    g: DiGraph[N,NL,E,EL]): Pn[N,NL,E,EL,DiGraph] =
+    Pn[N,NL,E,EL,DiGraph](Mn(g))
+  implicit def mnToPn[N,NL,E<:DiEdgeLike[N],EL](
+    m: Mn[N,NL,E,EL,DiGraph]) = Pn[N,NL,E,EL,DiGraph](m)
 
 
   // -- Graph --
-  implicit def withLabel[T,U](x: (T,U)) = (x._1, Some(x._2))
-  implicit def withoutLabel[T,U](x: T): (T, Option[U])  = (x, None)
+  implicit def withLabel[T,U](x: (T,U)) = (x._1,Some(x._2))
+  implicit def withoutLabel[T,U](x: T): (T,Option[U])  = (x,None)
   implicit def toSome[T](x: T) = Some(x)
 
 
