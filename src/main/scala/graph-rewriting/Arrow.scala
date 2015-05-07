@@ -45,7 +45,7 @@ abstract class Arrow[
       !(n contains u) || (v == n(u)) }, "incompatible node map")
     require(that.e forall { case (x,y) =>
       !(e contains x) || (y == e(x)) }, "incompatible edge map")
-    Arrow(dom,cod,n ++ other.n,e ++ other.e)
+    Arrow(dom,cod,n ++ that.n,e ++ that.e)
   }
 
   def stringPrefix: String = "Arrow"
