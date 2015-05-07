@@ -22,20 +22,30 @@ case class RateMn(
   def * (rm: RateMn) = RateMn(coef * rm.coef, numer ++ rm.numer, denom ++ rm.denom)
   def / (rm: RateMn) = RateMn(coef / rm.coef, numer ++ rm.denom, denom ++ rm.numer)
   def * (rp: RatePn): RatePn = rp map (_ * this)
-  def * [N,NL,E<:DiEdgeLike[N],EL](g: Graph[N,NL,E,EL]) =
+  def * [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    g: G[N,NL,E,EL]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
     Mn(RatePn(this), Vector(g), Vector())
-  def / [N,NL,E<:DiEdgeLike[N],EL](g: Graph[N,NL,E,EL]) =
+  def / [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    g: G[N,NL,E,EL]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
     Mn(RatePn(this), Vector(), Vector(g))
-  def * [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]): Mn[N,NL,E,EL] =
-    Mn(this * m.coef, m.numer, m.denom)
-  def / [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]): Mn[N,NL,E,EL] =
-    m.coef match {
-      case RatePn(Vector(rm)) => Mn(this / rm, m.denom, m.numer)
-      case _ => throw new UnsupportedOperation(
-        "can't divide by a polynomial")
-    }
-  def * [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]): Pn[N,NL,E,EL] =
-    p map (_ * this)
+  def * [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+      : Mn[N,NL,E,EL,G] = Mn(this * m.coef, m.numer, m.denom)
+  def / [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+      : Mn[N,NL,E,EL,G] = m.coef match {
+    case RatePn(Vector(rm)) => Mn(this / rm, m.denom, m.numer)
+    case _ => throw new UnsupportedOperation(
+      "can't divide by a polynomial")
+  }
+  def * [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G])//(implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+      : Pn[N,NL,E,EL,G] = p map (_ * this)
   // addition and substraction
   def + (k: Rate) = RatePn(Vector(this,  RateMn(k)))
   def - (k: Rate) = RatePn(Vector(this, -RateMn(k)))
@@ -43,14 +53,22 @@ case class RateMn(
   def - (rm: RateMn) = RatePn(Vector(this, -rm))
   def + (rp: RatePn) = RatePn(this +:   rp .terms)
   def - (rp: RatePn) = RatePn(this +: (-rp).terms)
-  def + [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](RatePn(this)), m)
-  def - [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](RatePn(this)), -m)
-  def + [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](RatePn(this)) +: p.terms)
-  def - [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](RatePn(this)) +: (-p).terms)
+  def + [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](RatePn(this)), m)
+  def - [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](RatePn(this)), -m)
+  def + [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](RatePn(this)) +: p.terms)
+  def - [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](RatePn(this)) +: (-p).terms)
   def unary_- = RateMn(-coef, numer, denom)
   // FIXME: There's a bug in this method
   def simplify: RateMn = {
@@ -104,20 +122,30 @@ case class RatePn(terms: Vector[RateMn]) {
   def / (rm: RateMn) = RatePn(terms map (_ / rm))
   def * (rp: RatePn) = RatePn(for (rm1 <- terms; rm2 <- rp.terms)
                               yield rm1 * rm2)
-  def * [N,NL,E<:DiEdgeLike[N],EL](g: Graph[N,NL,E,EL]) =
+  def * [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    g: G[N,NL,E,EL]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
     Mn(this, Vector(g), Vector())
-  def / [N,NL,E<:DiEdgeLike[N],EL](g: Graph[N,NL,E,EL]) =
+  def / [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    g: G[N,NL,E,EL]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
     Mn(this, Vector(), Vector(g))
-  def * [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]): Mn[N,NL,E,EL] =
-    Mn(this * m.coef, m.numer, m.denom)
-  def / [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]): Mn[N,NL,E,EL] =
-    m.coef match {
-      case RatePn(Vector(rm)) => Mn(this / rm, m.denom, m.numer)
-      case _ => throw new UnsupportedOperation(
-        "can't divide by a polynomial")
-    }
-  def * [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]): Pn[N,NL,E,EL] =
-    p map (_ * this)
+  def * [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+      : Mn[N,NL,E,EL,G] = Mn(this * m.coef, m.numer, m.denom)
+  def / [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+      : Mn[N,NL,E,EL,G] = m.coef match {
+    case RatePn(Vector(rm)) => Mn(this / rm, m.denom, m.numer)
+    case _ => throw new UnsupportedOperation(
+      "can't divide by a polynomial")
+  }
+  def * [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G]) // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+      : Pn[N,NL,E,EL,G] = p map (_ * this)
   // addition and substraction
   def + (k: Rate) = RatePn(terms :+  RateMn(k))
   def - (k: Rate) = RatePn(terms :+ -RateMn(k))
@@ -125,14 +153,22 @@ case class RatePn(terms: Vector[RateMn]) {
   def - (rm: RateMn) = RatePn(terms :+ -rm)
   def + (rp: RatePn) = RatePn(terms ++   rp .terms)
   def - (rp: RatePn) = RatePn(terms ++ (-rp).terms)
-  def + [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](this), m)
-  def - [N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](this), -m)
-  def + [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](this) +: p.terms)
-  def - [N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL]) =
-    Pn(Mn[N,NL,E,EL](this) +: (-p).terms)
+  def + [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](this), m)
+  def - [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](this), -m)
+  def + [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](this) +: p.terms)
+  def - [N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    Pn(Mn[N,NL,E,EL,G](this) +: (-p).terms)
   def unary_- = RatePn(terms map (-_))
   def simplify: RatePn = {
     val rmns = mutable.ArrayBuffer.empty[RateMn]
@@ -166,154 +202,187 @@ object RatePn {
 }
 
 /** Graph monomials. */
-class Mn[N,NL,E<:DiEdgeLike[N],EL](
+class Mn[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val coef: RatePn,
-  val numer: Vector[Graph[N,NL,E,EL]],
-  val denom: Vector[Graph[N,NL,E,EL]]) {
+  val numer: Vector[G[N,NL,E,EL]],
+  val denom: Vector[G[N,NL,E,EL]]) { //(
+  // implicit val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) {
   // multiplication and division
   def * (k: Rate) = Mn(coef * k, numer, denom)
   def / (k: Rate) = Mn(coef / k, numer, denom)
   def * (rm: RateMn) = Mn(coef * rm, numer, denom)
   def / (rm: RateMn) = Mn(coef / rm, numer, denom)
   def * (rp: RatePn) = Mn(coef * rp, numer, denom)
-  def * (g: Graph[N,NL,E,EL]) = Mn(coef, numer :+ g, denom)
-  def / (g: Graph[N,NL,E,EL]) = Mn(coef, numer, denom :+ g)
-  def * (m: Mn[N,NL,E,EL]) =
+  def * (g: G[N,NL,E,EL]) = Mn(coef, numer :+ g, denom)
+  def / (g: G[N,NL,E,EL]) = Mn(coef, numer, denom :+ g)
+  def * (m: Mn[N,NL,E,EL,G]) =
     Mn(coef * m.coef, numer ++ m.numer, denom ++ m.denom)
-  def / (m: Mn[N,NL,E,EL]) =
+  def / (m: Mn[N,NL,E,EL,G]) =
     m.coef match {
       case RatePn(Vector(rm)) =>
         Mn(coef / rm, numer ++ m.denom, denom ++ m.numer)
       case _ => throw new UnsupportedOperation(
         "can't divide by a polynomial")
     }
-  def * (p: Pn[N,NL,E,EL]): Pn[N,NL,E,EL] = p map (_ * this)
+  def * (p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = p map (_ * this)
   // addition and substraction
-  def + (k: Rate) = Pn(this, Mn[N,NL,E,EL]( RateMn(k)))
-  def - (k: Rate) = Pn(this, Mn[N,NL,E,EL](-RateMn(k)))
-  def + (rm: RateMn) = Pn(this, Mn[N,NL,E,EL]( rm))
-  def - (rm: RateMn) = Pn(this, Mn[N,NL,E,EL](-rm))
-  def + (rp: RatePn) = Pn(this, Mn[N,NL,E,EL]( rp))
-  def - (rp: RatePn) = Pn(this, Mn[N,NL,E,EL](-rp))
-  def + (m: Mn[N,NL,E,EL]) = Pn(this,  m)
-  def - (m: Mn[N,NL,E,EL]) = Pn(this, -m)
-  def + (p: Pn[N,NL,E,EL]) = Pn(this +:   p .terms)
-  def - (p: Pn[N,NL,E,EL]) = Pn(this +: (-p).terms)
+  def + (k: Rate) = Pn(this, Mn[N,NL,E,EL,G]( RateMn(k)))
+  def - (k: Rate) = Pn(this, Mn[N,NL,E,EL,G](-RateMn(k)))
+  def + (rm: RateMn) = Pn(this, Mn[N,NL,E,EL,G]( rm))
+  def - (rm: RateMn) = Pn(this, Mn[N,NL,E,EL,G](-rm))
+  def + (rp: RatePn) = Pn(this, Mn[N,NL,E,EL,G]( rp))
+  def - (rp: RatePn) = Pn(this, Mn[N,NL,E,EL,G](-rp))
+  def + (m: Mn[N,NL,E,EL,G]) = Pn(this,  m)
+  def - (m: Mn[N,NL,E,EL,G]) = Pn(this, -m)
+  def + (p: Pn[N,NL,E,EL,G]) = Pn(this +:   p .terms)
+  def - (p: Pn[N,NL,E,EL,G]) = Pn(this +: (-p).terms)
   def unary_- = Mn(-coef, numer, denom)
   // equality
   override def equals(other: Any): Boolean = other match {
-    case that: Mn[_,_,_,_] =>
+    case that: Mn[_,_,_,_,_] =>
       (that canEqual this) &&
       (coef == that.coef) &&
       (numer == that.numer) &&
       (denom == that.denom)
     case _ => false
   }
-  def canEqual(other: Any): Boolean =
-    other.isInstanceOf[Mn[_,_,_,_]]
+  def canEqual(other: Any): Boolean = other match {
+    case _: Mn[_,_,_,_,_] => true
+    case _ => false
+  }
   override def hashCode: Int =
     41 * (41 * (41 + coef.hashCode) + numer.hashCode) + denom.hashCode
-  def graphs: Seq[Graph[N,NL,E,EL]] = numer ++ denom
-  def isZero = this == Mn.zero[N,NL,E,EL]
+  def graphs: Seq[G[N,NL,E,EL]] = numer ++ denom
+  def isZero = this == Mn.zero[N,NL,E,EL,G]
   override def toString = s"Mn($coef, $numer, $denom)"
 }
 
 object Mn {
-  def zero[N,NL,E<:DiEdgeLike[N],EL] =
-    new Mn[N,NL,E,EL](RatePn.zero, Vector(), Vector())
-  def one[N,NL,E<:DiEdgeLike[N],EL] =
-    new Mn[N,NL,E,EL](RatePn.one, Vector(), Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](rp: RatePn) =
-    new Mn[N,NL,E,EL](rp, Vector(), Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](numer: Graph[N,NL,E,EL]*) =
-    new Mn[N,NL,E,EL](RatePn.one, numer.toVector, Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    numer: Vector[Graph[N,NL,E,EL]]) =
-    new Mn[N,NL,E,EL](RatePn.one, numer, Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    numer: Traversable[Graph[N,NL,E,EL]]) =
-    new Mn[N,NL,E,EL](RatePn.one, numer.toVector, Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
+  def zero[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] = //(
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](RatePn.zero, Vector(), Vector())
+  def one[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](RatePn.one, Vector(), Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    rp: RatePn) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](rp, Vector(), Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    numer: G[N,NL,E,EL]*) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](RatePn.one, numer.toVector, Vector())
+  // TODO: Check that when a Vector of Gs is passed, this function
+  // is called and not the one for Traversables.
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    numer: Vector[G[N,NL,E,EL]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](RatePn.one, numer, Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    numer: Traversable[G[N,NL,E,EL]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](RatePn.one, numer.toVector, Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    rp: RatePn, numer: G[N,NL,E,EL]*) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](rp, numer.toVector, Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    rp: RatePn, numer: Vector[G[N,NL,E,EL]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](rp, numer, Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    rp: RatePn, numer: Traversable[G[N,NL,E,EL]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](rp, numer.toVector, Vector())
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     rp: RatePn,
-    numer: Graph[N,NL,E,EL]*) =
-    new Mn[N,NL,E,EL](rp, numer.toVector, Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
+    numer: Vector[G[N,NL,E,EL]],
+    denom: Vector[G[N,NL,E,EL]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](rp, numer, denom)
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     rp: RatePn,
-    numer: Vector[Graph[N,NL,E,EL]]) =
-    new Mn[N,NL,E,EL](rp, numer, Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    rp: RatePn,
-    numer: Traversable[Graph[N,NL,E,EL]]) =
-    new Mn[N,NL,E,EL](rp, numer.toVector, Vector())
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    rp: RatePn,
-    numer: Vector[Graph[N,NL,E,EL]],
-    denom: Vector[Graph[N,NL,E,EL]]) =
-    new Mn[N,NL,E,EL](rp, numer, denom)
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    rp: RatePn,
-    numer: Traversable[Graph[N,NL,E,EL]],
-    denom: Traversable[Graph[N,NL,E,EL]]) =
-    new Mn[N,NL,E,EL](rp, numer.toVector, denom.toVector)
-  def unapply[N,NL,E<:DiEdgeLike[N],EL](m: Mn[N,NL,E,EL]) =
+    numer: Traversable[G[N,NL,E,EL]],
+    denom: Traversable[G[N,NL,E,EL]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Mn[N,NL,E,EL,G](rp, numer.toVector, denom.toVector)
+  def unapply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    m: Mn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
     Some(m.coef, m.numer, m.denom)
 
   // TODO: Pair approximation
-  // def pairApproximation[N,NL,E<:DiEdgeLike[N],EL](
-  //   g: Graph[N,NL,E,EL], intersection: (Set[N], Set[E])): Mn[N,NL,E,EL]
+  // def pairApproximation[N,NL,E<:DiEdgeLike[N],EL,G[X,Y,Z<:DiEdgeLike[X],W]](
+  //   g: G[N,NL,E,EL], intersection: (Set[N], Set[E])): Mn[N,NL,E,EL,G]
 
   // TODO: Approximate master equation... What is this exactly?
 }
 
 
 /** Graph polynomials. */
-class Pn[N,NL,E<:DiEdgeLike[N],EL](val terms: Vector[Mn[N,NL,E,EL]]) {
+class Pn[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+  val terms: Vector[Mn[N,NL,E,EL,G]]) { //(
+  // implicit val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) {
   require(terms.nonEmpty, "empty polynomial")
   // multiplication and division
-  def * (k: Rate): Pn[N,NL,E,EL] = Pn(terms map (_ * k))
-  def / (k: Rate): Pn[N,NL,E,EL] = Pn(terms map (_ / k))
-  def * (rm: RateMn): Pn[N,NL,E,EL] = Pn(terms map (_ * rm))
-  def / (rm: RateMn): Pn[N,NL,E,EL] = Pn(terms map (_ / rm))
-  def * (rp: RatePn): Pn[N,NL,E,EL] = Pn(terms map (_ * rp))
-  def * (g: Graph[N,NL,E,EL]): Pn[N,NL,E,EL] = Pn(terms map (_ * g))
-  def / (g: Graph[N,NL,E,EL]): Pn[N,NL,E,EL] = Pn(terms map (_ / g))
-  def * (m: Mn[N,NL,E,EL]): Pn[N,NL,E,EL] = map(_ * m)
-  def / (m: Mn[N,NL,E,EL]): Pn[N,NL,E,EL] = map(_ / m)
-  def * (p: Pn[N,NL,E,EL]): Pn[N,NL,E,EL] =
+  def * (k: Rate): Pn[N,NL,E,EL,G] = Pn(terms map (_ * k))
+  def / (k: Rate): Pn[N,NL,E,EL,G] = Pn(terms map (_ / k))
+  def * (rm: RateMn): Pn[N,NL,E,EL,G] = Pn(terms map (_ * rm))
+  def / (rm: RateMn): Pn[N,NL,E,EL,G] = Pn(terms map (_ / rm))
+  def * (rp: RatePn): Pn[N,NL,E,EL,G] = Pn(terms map (_ * rp))
+  def * (g: G[N,NL,E,EL]): Pn[N,NL,E,EL,G] = Pn(terms map (_ * g))
+  def / (g: G[N,NL,E,EL]): Pn[N,NL,E,EL,G] = Pn(terms map (_ / g))
+  def * (m: Mn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = map(_ * m)
+  def / (m: Mn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = map(_ / m)
+  def * (p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] =
     Pn(for (m1 <- terms; m2 <- p.terms) yield m1 * m2)
   // addition and substraction
-  def + (k: Rate) = Pn(terms :+ Mn[N,NL,E,EL]( RateMn(k)))
-  def - (k: Rate) = Pn(terms :+ Mn[N,NL,E,EL](-RateMn(k)))
-  def + (rm: RateMn) = Pn(terms :+ Mn[N,NL,E,EL]( rm))
-  def - (rm: RateMn) = Pn(terms :+ Mn[N,NL,E,EL](-rm))
-  def + (rp: RatePn) = Pn(terms :+ Mn[N,NL,E,EL]( rp))
-  def - (rp: RatePn) = Pn(terms :+ Mn[N,NL,E,EL](-rp))
-  def + (m: Mn[N,NL,E,EL]) = Pn[N,NL,E,EL](terms :+  m)
-  def - (m: Mn[N,NL,E,EL]) = Pn[N,NL,E,EL](terms :+ -m)
-  def + (p: Pn[N,NL,E,EL]) = Pn[N,NL,E,EL](terms ++   p .terms)
-  def - (p: Pn[N,NL,E,EL]) = Pn[N,NL,E,EL](terms ++ (-p).terms)
-  def unary_- = Pn[N,NL,E,EL](terms map (-_))
+  def + (k: Rate) = Pn(terms :+ Mn[N,NL,E,EL,G]( RateMn(k)))
+  def - (k: Rate) = Pn(terms :+ Mn[N,NL,E,EL,G](-RateMn(k)))
+  def + (rm: RateMn) = Pn(terms :+ Mn[N,NL,E,EL,G]( rm))
+  def - (rm: RateMn) = Pn(terms :+ Mn[N,NL,E,EL,G](-rm))
+  def + (rp: RatePn) = Pn(terms :+ Mn[N,NL,E,EL,G]( rp))
+  def - (rp: RatePn) = Pn(terms :+ Mn[N,NL,E,EL,G](-rp))
+  def + (m: Mn[N,NL,E,EL,G]) = Pn[N,NL,E,EL,G](terms :+  m)
+  def - (m: Mn[N,NL,E,EL,G]) = Pn[N,NL,E,EL,G](terms :+ -m)
+  def + (p: Pn[N,NL,E,EL,G]) = Pn[N,NL,E,EL,G](terms ++   p .terms)
+  def - (p: Pn[N,NL,E,EL,G]) = Pn[N,NL,E,EL,G](terms ++ (-p).terms)
+  def unary_- = Pn[N,NL,E,EL,G](terms map (-_))
   // equality
   override def equals(other: Any): Boolean = other match {
-    case that: Pn[_,_,_,_] =>
+    case that: Pn[_,_,_,_,_] =>
       (that canEqual this) && terms == that.terms
     case _ => false
   }
-  def canEqual(other: Any): Boolean =
-    other.isInstanceOf[Pn[_,_,_,_]]
+  def canEqual(other: Any): Boolean = other match {
+    case _: Pn[_,_,_,_,_] => true
+    case _ => false
+  }
   override def hashCode: Int = terms.hashCode
 
   // -- Seq methods --
   def isEmpty = terms.isEmpty
   def nonEmpty = terms.nonEmpty
-  def map(f: Mn[N,NL,E,EL] => Mn[N,NL,E,EL]) = Pn(terms map f)
+  def map(f: Mn[N,NL,E,EL,G] => Mn[N,NL,E,EL,G]) = Pn(terms map f)
 
   // -- Pn methods --
-  def isZero: Boolean = this == Pn.zero[N,NL,E,EL]
-  def graphs: Seq[Graph[N,NL,E,EL]] = terms flatMap (_.graphs)
-  def simplify: Pn[N,NL,E,EL] = {
-    import Graph.isos
-    val mns = mutable.ArrayBuffer.empty[Mn[N,NL,E,EL]]
+  def isZero: Boolean = this == Pn.zero[N,NL,E,EL,G]
+  def graphs: Seq[G[N,NL,E,EL]] = terms flatMap (_.graphs)
+  def simplify: Pn[N,NL,E,EL,G] = {
+    import DiGraph.isos
+    val mns = mutable.ArrayBuffer.empty[Mn[N,NL,E,EL,G]]
     for (m1 <- terms) {
       val Mn(c1, n1, d1) = m1
       mns indexWhere {
@@ -335,114 +404,139 @@ class Pn[N,NL,E<:DiEdgeLike[N],EL](val terms: Vector[Mn[N,NL,E,EL]]) {
 }
 
 object Pn {
-  def zero[N,NL,E<:DiEdgeLike[N],EL] =
-    new Pn[N,NL,E,EL](Vector(Mn.zero[N,NL,E,EL]))
-  def one[N,NL,E<:DiEdgeLike[N],EL] =
-    new Pn[N,NL,E,EL](Vector(Mn.one[N,NL,E,EL]))
-  def apply[N,NL,E<:DiEdgeLike[N],EL](terms: Mn[N,NL,E,EL]*) =
-    if (terms.isEmpty) Pn.one[N,NL,E,EL]
-    else new Pn[N,NL,E,EL](terms.toVector)
-  def apply[N,NL,E<:DiEdgeLike[N],EL](terms: Traversable[Mn[N,NL,E,EL]]) =
-    if (terms.isEmpty) Pn.one[N,NL,E,EL]
-    else new Pn[N,NL,E,EL](terms.toVector)
-  def unapply[N,NL,E<:DiEdgeLike[N],EL](p: Pn[N,NL,E,EL])
-      : Option[Vector[Mn[N,NL,E,EL]]] = Some(p.terms)
+  def zero[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Pn[N,NL,E,EL,G](Vector(Mn.zero[N,NL,E,EL,G]))
+  def one[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new Pn[N,NL,E,EL,G](Vector(Mn.one[N,NL,E,EL,G]))
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    terms: Mn[N,NL,E,EL,G]*) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    if (terms.isEmpty) Pn.one[N,NL,E,EL,G]
+    else new Pn[N,NL,E,EL,G](terms.toVector)
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    terms: Traversable[Mn[N,NL,E,EL,G]]) =
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    if (terms.isEmpty) Pn.one[N,NL,E,EL,G]
+    else new Pn[N,NL,E,EL,G](terms.toVector)
+  def unapply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    p: Pn[N,NL,E,EL,G]) = Some(p.terms)
+    // implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) = Some(p.terms)
 }
 
-sealed abstract class Eq[N,NL,E<:DiEdgeLike[N],EL] {
-  val lhs: Graph[N,NL,E,EL]
-  // val rhs: Pn[N,NL,E,EL]
+sealed abstract class Eq[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] { //(
+  // implicit val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) {
+  val lhs: G[N,NL,E,EL]
+  // val rhs: Pn[N,NL,E,EL,G]
 }
 // NOTE: rhs has to be a monomial because we do not know
 // how to divide by polynomials.
-case class AlgEq[N,NL,E<:DiEdgeLike[N],EL](
-  lhs: Graph[N,NL,E,EL],
-  rhs: Mn[N,NL,E,EL])
-    extends Eq[N,NL,E,EL] {
+case class AlgEq[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+  lhs: G[N,NL,E,EL],
+  rhs: Mn[N,NL,E,EL,G]) //(
+  // implicit override val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+    extends Eq[N,NL,E,EL,G] {
   override def toString = s"$lhs = $rhs"
 }
-case class ODE[N,NL,E<:DiEdgeLike[N],EL](
-  lhs: Graph[N,NL,E,EL],
-  rhs: Pn[N,NL,E,EL])
-    extends Eq[N,NL,E,EL] {
+case class ODE[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+  lhs: G[N,NL,E,EL],
+  rhs: Pn[N,NL,E,EL,G]) //(
+  // implicit override val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+    extends Eq[N,NL,E,EL,G] {
   override def toString = s"d[$lhs]/dt = $rhs"
 }
 
 // Naming of graphs
 // NOTE: It is assumed that a class extending GraphNaming will give
 // the same name to all graphs in an isomorphism class.
-abstract class GraphNaming[N,NL,E<:DiEdgeLike[N],EL]
-    extends (Graph[N,NL,E,EL] => String) {
-  // def apply(g: Graph[N,NL,E,EL]): String
-  def seq: Traversable[(Graph[N,NL,E,EL], String)]
+abstract class GraphNaming[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]]//(
+  // implicit val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
+    extends (G[N,NL,E,EL] => String) {
+  // def apply(g: G[N,NL,E,EL]): String
+  def seq: Traversable[(G[N,NL,E,EL], String)]
 }
-class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL](start: Int = 0)
-    extends GraphNaming[N,NL,E,EL] {
+class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+  start: Int = 0)//(
+  //implicit override val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+    extends GraphNaming[N,NL,E,EL,G] {
 
   val cnt = Counter(start)
-  val index = mutable.Map[Graph[N,NL,E,EL], Int]()
-  val isos = mutable.Map[Graph[N,NL,E,EL], Graph[N,NL,E,EL]]()
+  val index = mutable.Map[G[N,NL,E,EL], Int]()
+  val isos = mutable.Map[G[N,NL,E,EL], G[N,NL,E,EL]]()
 
-  def apply(g: Graph[N,NL,E,EL]): String =
+  def apply(g: G[N,NL,E,EL]): String =
     if (index contains g) s"F${index(g)}"
     else if (isos contains g) s"F${index(isos(g))}"
-    else index find { case (h, _) => Graph.iso(g, h) } match {
+    else index find { case (h, _) => g iso h } match {
       case Some((h, _)) => { isos(g) = h; s"F${index(h)}" }
       case None => { val i = cnt.next; index(g) = i; s"F$i" }
     }
 
-  def seq: Traversable[(Graph[N,NL,E,EL], String)] =
+  def seq: Traversable[(G[N,NL,E,EL], String)] =
     for ((g, i) <- index.toSeq.sortBy(_._2)) yield (g, s"F$i")
 }
 
 
-class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
-  eqs: Traversable[Eq[N,NL,E,EL]]) {
+class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+  eqs: Traversable[Eq[N,NL,E,EL,G]]) { //(
+  // implicit val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) {
 
   // Split algebraic equations into substitutions and cancellations
   // A cancellation is a substitution by zero
   // TODO: subs and zeros should be "smart maps" that when given
   // a graph isomorphic to g and g is a key of the map, it returns
   // the value associated to g
-  val subs: Map[Graph[N,NL,E,EL], Mn[N,NL,E,EL]] = eqs.collect({
+  val subs: Map[G[N,NL,E,EL], Mn[N,NL,E,EL,G]] = eqs.collect({
     case AlgEq(lhs, rhs) if !rhs.isZero => (lhs, rhs) }).toMap
 
-  val zeros: Set[Graph[N,NL,E,EL]] = eqs.collect({
+  val zeros: Set[G[N,NL,E,EL]] = eqs.collect({
     case AlgEq(lhs, rhs) if rhs.isZero => lhs }).toSet
 
-  def substituteMn(m: Mn[N,NL,E,EL]): Pn[N,NL,E,EL] = {
+  def substituteMn(m: Mn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = {
     require(!hasZero(m.denom), "division by zero")
     if (hasZero(m.numer)) Pn.zero
     else {
       var changed = false
-      def sub(gs: Vector[Graph[N,NL,E,EL]]): Mn[N,NL,E,EL] = {
+      def sub(gs: Vector[G[N,NL,E,EL]]): Mn[N,NL,E,EL,G] = {
         for (g <- gs) yield
           // TODO: I should probably check if g is iso to something in subs
           if ((subs contains g) && (subs(g) != Mn(g))) {
             changed = true
             subs(g)
           } else Mn(g)
-      }.foldLeft(Mn.one[N,NL,E,EL])(_*_)
+      }.foldLeft(Mn.one[N,NL,E,EL,G])(_*_)
       val numer = sub(m.numer)
       val denom = sub(m.denom)
-      val res = Mn(m.coef) * numer / denom
+      val res = Pn(numer * m.coef / denom)
       if (changed) substitutePn(res)
       else res
     }
   }
 
-  def substitutePn(p: Pn[N,NL,E,EL]): Pn[N,NL,E,EL] =
+  def substitutePn(p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] =
     Pn(for (m1 <- p.terms; m2 <- substituteMn(m1).terms)
        yield m2).simplify
 
   // TODO: I should probably check if g in gs is iso to something in zeros
-  def hasZero(gs: Traversable[Graph[N,NL,E,EL]]): Boolean =
+  def hasZero(gs: Traversable[G[N,NL,E,EL]]): Boolean =
     gs exists (zeros contains _)
 
-  lazy val simplify: Traversable[ODE[N,NL,E,EL]] =
+  lazy val simplify: Traversable[ODE[N,NL,E,EL,G]] =
     for (ODE(lhs, rhs) <- eqs) yield ODE(lhs, substitutePn(rhs))
 
-  def strMn[T](m: Mn[N,NL,E,EL], name: Graph[N,NL,E,EL] => T): String =
+  def strMn[T](m: Mn[N,NL,E,EL,G], name: G[N,NL,E,EL] => T): String =
     (if (m.coef == RatePn.one) ""
      else s"${m.coef}" + (if (m.numer.isEmpty) "" else " * ")) +
      m.numer.map(name(_)).mkString(" * ") +
@@ -450,7 +544,7 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
      else if (m.denom.length == 1) s" / ${name(m.denom.head)}"
      else " / (" + m.denom.map(name(_)).mkString(" * ") + ")")
 
-  def strGraph(g: Graph[N,NL,E,EL]): String = {
+  def strGraph(g: G[N,NL,E,EL]): String = {
     val nm = g.nodes.zipWithIndex.toMap
     val em = (for (e <- g.edges) yield
       (e, e.copy(nm(e.source), nm(e.target)))).toMap
@@ -464,9 +558,9 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
   }
 
   def print: Unit =
-    print(new IncrementalNaming[N,NL,E,EL]())
+    print(new IncrementalNaming[N,NL,E,EL,G]())
 
-  def print(name: GraphNaming[N,NL,E,EL]): Unit = {
+  def print(name: GraphNaming[N,NL,E,EL,G]): Unit = {
 
     val lines = for (ODE(lhs, rhs) <- simplify) yield (
       s"d${name(lhs)} = " + (
@@ -482,12 +576,12 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
   }
 
   // def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
-  //   g0: Graph[N,NL,E,EL]): Unit =
+  //   g0: G[N,NL,E,EL]): Unit =
   //   saveAsOctave(filename, 0.0, finalTime, numSteps,
   //     g => Graph.arrows(g0, g).length)
 
   def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
-    init: Graph[N,NL,E,EL] => Double): Unit =
+    init: G[N,NL,E,EL] => Double): Unit =
     saveAsOctave(filename, 0.0, finalTime, numSteps, init)
 
   def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
@@ -495,13 +589,13 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
     saveAsOctave(filename, 0.0, finalTime, numSteps, init)
 
   // def saveAsOctave(filename: String, startTime: Double,
-  //   finalTime: Double, numSteps: Int, g0: Graph[N,NL,E,EL]): Unit =
+  //   finalTime: Double, numSteps: Int, g0: G[N,NL,E,EL]): Unit =
   //   saveAsOctave(filename, startTime, finalTime, numSteps,
   //     g => Graph.arrows(g0, g).length)
 
   def saveAsOctave(filename: String, startTime: Double,
     finalTime: Double, numSteps: Int,
-    init: Graph[N,NL,E,EL] => Double): Unit =
+    init: G[N,NL,E,EL] => Double): Unit =
     saveAsOctave(filename, startTime, finalTime, numSteps,
       for (ODE(g,_) <- simplify) yield init(g))
 
@@ -562,7 +656,10 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL](
 }
 
 object ODEPrinter {
-  def apply[N,NL,E<:DiEdgeLike[N],EL](
-    eqs: Traversable[Eq[N,NL,E,EL]]) = new ODEPrinter(eqs)
+  def apply[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    eqs: Traversable[Eq[N,NL,E,EL,G]]) = //(implicit
+      // ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    new ODEPrinter(eqs)
 }
 

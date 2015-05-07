@@ -11,15 +11,18 @@ object moments {
     * the graph monomial `[A]*[B]*...*[C]`.
     * If graph is connected, returns None.
     */
-  def splitConnectedComponents[N,NL,E<:DiEdgeLike[N],EL](
-    g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
-    if (g.isConnected) None else Some(Mn(g.components))
+  def splitConnectedComponents[N,NL,E<:DiEdgeLike[N],EL,
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    g: G[N,NL,E,EL])(implicit ev: g.G[NL,E,EL] =:= G[N,NL,E,EL])
+      : Option[Mn[N,NL,E,EL,G]] =
+    if (g.isConnected) None else Some(Mn(g.components map (ev(_))))
 
 
   // --- Fragmentation ---
 
+  import DiGraph.{Unifier,EdgeUnifier}
   type N = String
-  type E = IdDiEdge[Int, N]
+  type E = IdDiEdge[Int,N]
 
   /** Discover at most `maxNumODEs` ordinary differential equations
     * for the mean ocurrence count of a given set of graph
@@ -34,22 +37,27 @@ object moments {
     * to be generated hasn't been reached (given by `maxNumODEs`).
     * For a transformer example, see `splitConnectedComponents`.
     */
-  def generateMeanODEs[NL,EL](
+  def generateMeanODEs[NL,EL,
+    H[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,H]](
     maxNumODEs: Int,
-    rules: Traversable[Rule[N,NL,E,EL]],
-    observables: Seq[Graph[N,NL,E,EL]],
-    transformers: (Graph[N,NL,E,EL] => Option[Mn[N,NL,E,EL]])*)
-      : Vector[Eq[N,NL,E,EL]] = {
+    rules: Traversable[Rule[N,NL,E,EL,H]],
+    observables: Seq[H[N,NL,E,EL]],
+    transformers: (H[N,NL,E,EL] => Option[Mn[N,NL,E,EL,H]])*)(implicit
+    // implicit ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
+      nodeUnifier: Unifier[N,N,N],
+      edgeUnifier: EdgeUnifier[N,N,N,E,E,E],
+      graphBuilder: () => H[N,NL,E,EL])
+      : Vector[Eq[N,NL,E,EL,H]] = {
 
     val reversedRules = rules.map(r => (r, r.reversed())).toMap
     val ti = transformers.zipWithIndex
 
     @tailrec
-    def loop(i: Int, obss: Seq[Graph[N,NL,E,EL]],
-      eqs: Vector[Eq[N,NL,E,EL]]): Vector[Eq[N,NL,E,EL]] =
+    def loop(i: Int, obss: Seq[H[N,NL,E,EL]],
+      eqs: Vector[Eq[N,NL,E,EL,H]]): Vector[Eq[N,NL,E,EL,H]] =
       obss match {
         case Seq() => eqs
-        case hd +: tl => eqs find (eq => Graph.iso(hd, eq.lhs)) match {
+        case hd +: tl => eqs find (eq => hd iso eq.lhs) match {
           case Some(eq) => {
             if (hd == eq.lhs) loop(i, tl, eqs)
             else loop(i, tl, eqs :+ AlgEq(hd, Mn(eq.lhs)))
@@ -67,19 +75,19 @@ object moments {
             } else if (i < maxNumODEs) { // create an ode only if i < maxNumODEs
               // no transformation is aplicable to hd
               val p = Pn((for (r <- rules) yield {
-                val ropp: Rule[N,NL,E,EL] = reversedRules(r)
+                val ropp: Rule[N,NL,E,EL,H] = reversedRules(r)
                 // minimal glueings with the left-hand side
-                val deletions: Seq[Mn[N,NL,E,EL]] =
-                  for ((mg, _, _) <- Graph.unions(hd, r.lhs))
+                val deletions: Seq[Mn[N,NL,E,EL,H]] =
+                  for ((mg, _, _) <- hd.unions[N,E,N,E,H](r.lhs))
                   yield (-r.rate * mg)
                 // minimal glueings with the right-hand side
-                val additions: Seq[Mn[N,NL,E,EL]] =
-                  for ((mg, _, m) <- Graph.unions(hd, ropp.lhs);
+                val additions: Seq[Mn[N,NL,E,EL,H]] =
+                  for ((mg, _, m) <- hd.unions[N,E,N,E,H](ropp.lhs);
                        rmg = mg.copy; (comatch, _, _) = ropp(m);
                        lmg = mg.copy; _ = r(comatch)
                        // TODO: relevance test
                        // derivability test
-                       if Graph.iso(mg, rmg))
+                       if mg iso rmg)
                   yield (r.rate * lmg)
                 deletions ++ additions
               // simplifying here can save us some work later
