@@ -68,5 +68,42 @@ object implicits {
   implicit def withLabel[T,U](x: (T,U)) = (x._1, Some(x._2))
   implicit def withoutLabel[T,U](x: T): (T, Option[U])  = (x, None)
   implicit def toSome[T](x: T) = Some(x)
+
+
+  // -- Unify nodes and edges --
+  implicit object StringNodeUnifier
+      extends DiGraph.Unifier[String,String,String] {
+    def unify(u: String, v: String) = s"($u,$v)"
+    def left(u: String) = s"($u,)"
+    def right(u: String) = s"(,$u)"
+  }
+
+  implicit object IdDiEdgeUnifier
+      extends DiGraph.EdgeUnifier[String,String,String,
+        IdDiEdge[Int,String],IdDiEdge[Int,String],IdDiEdge[Int,String]] {
+    def unify(e1: IdDiEdge[Int,String], e2: IdDiEdge[Int,String]) =
+      IdDiEdge(Counter.next,e1.source,e1.target)
+    var cnt: Counter = null
+    var fn1: Map[String,String] = null
+    var fn2: Map[String,String] = null
+    def initialise[NL,EL,G[X,Y,Z<:DiEdgeLike[X],W]<:BaseDiGraph[X,Y,Z,W]](
+      g: G[String,NL,IdDiEdge[Int,String],EL],
+      leftNodeMap: Map[String,String],
+      rightNodeMap: Map[String,String]): Unit = {
+      val maxEdgeId = (g.edges.map(_.id) + 0).max
+      cnt = Counter(maxEdgeId + 1)
+      fn1 = leftNodeMap
+      fn2 = rightNodeMap
+    }
+    def left(e1: IdDiEdge[Int,String]) =
+      IdDiEdge(cnt.next,fn1(e1.source),fn1(e1.target))
+    def right(e2: IdDiEdge[Int,String]) =
+      IdDiEdge(cnt.next,fn2(e2.source),fn2(e2.target))
+  }
+
+  implicit object StringIdDiEdgeDiGraphBuilder
+      extends (() => DiGraph[String,String,IdDiEdge[Int,String],String]) {
+    def apply() = DiGraph.empty[String,String,IdDiEdge[Int,String],String]
+  }
 }
 
