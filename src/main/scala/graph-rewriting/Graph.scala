@@ -852,23 +852,25 @@ object DiGraph {
     isoFn: (G[N,NL,E,EL],G[N,NL,E,EL]) => Boolean): Boolean =
     if (gs.size != hs.size) false
     else {
+      // TODO: Better name than xsBySize?
       val gsBySize = gs groupBy (_.nodes.size)
       val hsBySize = hs groupBy (_.nodes.size)
       if (gsBySize.keySet != hsBySize.keySet) false
       else {
         var ok = true
-        for ((n, gsn) <- gsBySize if ok) {
+        for ((n, gsn) <- gsBySize if ok) { // gsn are the graphs of (node set) size n
           val hsn = hsBySize(n)
           if (gsn.size != hsn.size) ok = false
           else {
+            // TODO: Better name than xsnBySize?
             val gsnBySize = gsn groupBy (_.edges.size)
-            val hsnBySize = gsn groupBy (_.edges.size)
+            val hsnBySize = hsn groupBy (_.edges.size)
             if (gsnBySize.keySet != hsnBySize.keySet) ok = false
-            else for ((m, gsnm) <- gsnBySize if ok) {
+            else for ((m,gsnm) <- gsnBySize if ok) {
               val hsnm = hsnBySize(m).to[mutable.ArrayBuffer]
               if (gsnm.size != hsnm.size) ok = false
               else for (g <- gsnm if ok) {
-                hsnm find (isoFn(g, _)) match {
+                hsnm find (isoFn(g,_)) match {
                   case Some(h) => hsnm -= h
                   case None => ok = false
                 }
