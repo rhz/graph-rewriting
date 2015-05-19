@@ -544,18 +544,8 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
      else if (m.denom.length == 1) s" / ${name(m.denom.head)}"
      else " / (" + m.denom.map(name(_)).mkString(" * ") + ")")
 
-  def strGraph(g: G[N,NL,E,EL]): String = {
-    val nm = g.nodes.zipWithIndex.toMap
-    val em = (for (e <- g.edges) yield
-      (e, e.copy(nm(e.source), nm(e.target)))).toMap
-    val nl = for ((n, l) <- g.nodelabels) yield (nm(n), l)
-    val el = for ((e, l) <- g.edgelabels) yield (em(e), l)
-    g.stringPrefix + "(" +
-      "nodes = Set(" + nm.values.mkString(", ") + "), " +
-      "edges = Set(" + em.values.mkString(", ") + ")" +
-      (if (g.nodelabels.nonEmpty) s", nodelabels = $nl" else "") +
-      (if (g.edgelabels.nonEmpty) s", edgelabels = $el" else "") + ")"
-  }
+  def strGraph(g: G[N,NL,E,EL]): String =
+    g.toString(g.nodes.zipWithIndex.toMap)
 
   def print: Unit =
     print(new IncrementalNaming[N,NL,E,EL,G]())

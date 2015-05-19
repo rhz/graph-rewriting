@@ -20,10 +20,6 @@ object moments {
 
   // --- Fragmentation ---
 
-  import DiGraph.{Unifier,EdgeUnifier}
-  type N = String
-  type E = IdDiEdge[Int,N]
-
   /** Discover at most `maxNumODEs` ordinary differential equations
     * for the mean ocurrence count of a given set of graph
     * `observables` and the graph observables they depend on,
@@ -37,16 +33,16 @@ object moments {
     * to be generated hasn't been reached (given by `maxNumODEs`).
     * For a transformer example, see `splitConnectedComponents`.
     */
-  def generateMeanODEs[NL,EL,
+  def generateMeanODEs[N,NL,E<:DiEdgeLike[N],EL,
     H[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,H]](
     maxNumODEs: Int,
     rules: Traversable[Rule[N,NL,E,EL,H]],
     observables: Seq[H[N,NL,E,EL]],
     transformers: (H[N,NL,E,EL] => Option[Mn[N,NL,E,EL,H]])*)(implicit
-    // implicit ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
       nodeUnifier: Unifier[N,N,N],
-      edgeUnifier: EdgeUnifier[N,N,N,E,E,E],
+      edgeUnifier: (H[N,NL,E,EL],Map[N,N],Map[N,N]) => Unifier[E,E,E],
       graphBuilder: () => H[N,NL,E,EL])
+      // ev: H[N,NL,E,EL]#This <:< H[N,NL,E,EL]) // WARNING: This breaks the compiler
       : Vector[Eq[N,NL,E,EL,H]] = {
 
     val reversedRules = rules.map(r => (r, r.reversed())).toMap
@@ -59,18 +55,18 @@ object moments {
         case Seq() => eqs
         case hd +: tl => eqs find (eq => hd iso eq.lhs) match {
           case Some(eq) => {
-            if (hd == eq.lhs) loop(i, tl, eqs)
-            else loop(i, tl, eqs :+ AlgEq(hd, Mn(eq.lhs)))
+            if (hd == eq.lhs) loop(i,tl,eqs)
+            else loop(i, tl, eqs :+ AlgEq(hd,Mn(eq.lhs)))
           }
           case None => {
-            val mi = for ((t, i) <- ti; m <- t(hd)) yield (m, i)
+            val mi = for ((t,i) <- ti; m <- t(hd)) yield (m,i)
             if (mi.length > 1)
               println("more than one transformation (" +
                 mi.map(_._2).mkString(",") + ") found for " + hd)
             if (mi.nonEmpty) {
               // add algebraic equation provided by the transformation
               val m = mi.head._1
-              val eq = AlgEq(hd, m)
+              val eq = AlgEq(hd,m)
               loop(i, tl ++ m.graphs, eqs :+ eq)
             } else if (i < maxNumODEs) { // create an ode only if i < maxNumODEs
               // no transformation is aplicable to hd
@@ -78,12 +74,12 @@ object moments {
                 val ropp: Rule[N,NL,E,EL,H] = reversedRules(r)
                 // minimal glueings with the left-hand side
                 val deletions: Seq[Mn[N,NL,E,EL,H]] =
-                  for ((mg, _, _) <- hd.unions[N,E,N,E,H](r.lhs))
+                  for ((mg,_,_) <- hd.unions[N,E,N,E,H](r.lhs))
                   yield (-r.rate * mg)
                 // minimal glueings with the right-hand side
                 val additions: Seq[Mn[N,NL,E,EL,H]] =
-                  for ((mg, _, m) <- hd.unions[N,E,N,E,H](ropp.lhs);
-                       rmg = mg.copy; (comatch, _, _) = ropp(m);
+                  for ((mg,_,m) <- hd.unions[N,E,N,E,H](ropp.lhs);
+                       rmg = mg.copy; (comatch,_,_) = ropp(m);
                        lmg = mg.copy; _ = r(comatch)
                        // TODO: relevance test
                        // derivability test
@@ -92,7 +88,7 @@ object moments {
                 deletions ++ additions
               // simplifying here can save us some work later
               }).flatten.toVector).simplify
-              loop(i+1, tl ++ p.graphs, eqs :+ ODE(hd, p))
+              loop(i+1, tl ++ p.graphs, eqs :+ ODE(hd,p))
             }
             else loop(i, tl, eqs)
           }

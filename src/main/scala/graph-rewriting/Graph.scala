@@ -16,10 +16,16 @@ import implicits._
 abstract class BaseGraph[N,NL,E<:EdgeLike[N],EL] {
   graph =>
 
-  // type EdgeUpperBound >: E <: EdgeLike[N]
-  // type EdgeUpperBound[X] <: EdgeLike[X]
-  // type G[X,Y,Z<:EdgeLike[X],W] <: BaseGraph[X,Y,Z,W]
+  // The problem with this approach is that ET[X] could be DiEdgeLike[X]
+  // while E is EdgeLike[N] and then G[N,NL,E,EL] violates the E<:ET[X]
+  // bound
+  // type ET[X] <: EdgeLike[X]
+  // type G[X,Y,Z<:ET[X],W] <: BaseGraph[X,Y,Z,W]
+  // type This = G[N,NL,E,EL]
+  // TODO: This could also just be type G[X<:E] <: BaseGraph[N,NL,X,EL]
   type G[Y,Z<:E,W] <: BaseGraph[N,Y,Z,W]
+  // TODO: Try removing G and having type This <: BaseGraph[_,_,_,_]
+  // then in methods that create Arrows, get a type parameter G[...] >: This
   type This = G[NL,E,EL]
   def empty: This
   def asThis: This
@@ -307,9 +313,8 @@ abstract class BaseGraph[N,NL,E<:EdgeLike[N],EL] {
 trait ConcreteGraph[N,NL,E<:EdgeLike[N],EL,
   H[X,Y,Z<:EdgeLike[X],W] <: ConcreteGraph[X,Y,Z,W,H]]
     extends BaseGraph[N,NL,E,EL] {
-  // type G[X,Y,Z<:EdgeLike[X],W] = H[X,Y,Z,W]
-  // type EdgeUpperBound[X] = EdgeLike[X]
-  // type G[X,Y,Z<:EdgeUpperBound[X],W] = H[X,Y,Z,W]
+  // type ET[X] = EdgeLike[X]
+  // type G[X,Y,Z<:ET[X],W] = H[X,Y,Z,W]
   type G[Y,Z<:E,W] = H[N,Y,Z,W]
 }
 
@@ -335,9 +340,7 @@ object Graph {
     g
   }
 
-  // TODO: Probably should make this an implicit so that a graphBuilder
-  // can be implicitly created for any Graph, would that work?
-  def empty[N,NL,E<:EdgeLike[N],EL] = new Graph[N,NL,E,EL] // = const(List(), List())
+  implicit def empty[N,NL,E<:EdgeLike[N],EL] = new Graph[N,NL,E,EL]
 
   def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) = new {
     def apply[E<:EdgeLike[N],EL](edges: (E,Option[EL])*) =
@@ -355,10 +358,8 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
     extends BaseGraph[N,NL,E,EL] {
 
   override def stringPrefix = "DiGraph"
-  // type EdgeUpperBound >: E <: DiEdgeLike[N]
-  // type EdgeUpperBound[X] <: DiEdgeLike[X]
-  // type G[X,Y,Z<:EdgeUpperBound[X],W] <: BaseDiGraph[X,Y,Z,W]
-  // type G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]
+  // type ET[X] <: DiEdgeLike[X]
+  // type G[X,Y,Z<:ET[X],W] <: BaseDiGraph[X,Y,Z,W]
   type G[Y,Z<:E,W] <: BaseDiGraph[N,Y,Z,W]
 
   class DiNode(n: N) extends Node(n) {
@@ -464,9 +465,9 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
           // are equal then there's a posibility that u matches v
           if ((uin.keySet != vin.keySet) ||
               (uout.keySet != vout.keySet) ||
-              (uin exists { case (label, edges) =>
+              (uin exists { case (label,edges) =>
                 edges.size != vin(label).size }) ||
-              (uout exists { case (label, edges) =>
+              (uout exists { case (label,edges) =>
                 edges.size != vout(label).size })) None
           else {
             // sort incoming and outgoing edges by the number of
@@ -512,7 +513,7 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
               var finished = false
               var result: Option[Arrow[N,NL,E,EL,N2,NL,E2,EL,H]] = None
               while (result.isEmpty && !finished) {
-                val nbs = (indices, edges).zipped map ((i, xs) => xs(i))
+                val nbs = (indices,edges).zipped map ((i,xs) => xs(i))
                 var mfn = fn
                 var mfe = fe
                 var mes = es
@@ -570,7 +571,7 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
                   }
                 }
                 if (failed == false)
-                  result = extendBijection(q, mfn, mfe, mns, mes)
+                  result = extendBijection(q,mfn,mfe,mns,mes)
                 if (updateIndices)
                   finished = true
               }
@@ -612,8 +613,6 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
 
   // --- Intersections and Unions ---
 
-  import DiGraph.{Unifier,EdgeUnifier}
-
   /** Intersections of subobjects of `this` and `that` graph.
     *
     * @return the set of graph intersections with their respective
@@ -623,8 +622,7 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
     H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     that: H[N2,NL,E2,EL])(implicit
       nodeUnifier: Unifier[N,N2,N3],
-      // TODO: Probably I should make edgeUnifier a (H[N3,NL,E3,EL],Map[N,N3],Map[N2,N3]) => Unifier instead of EdgeUnifier
-      edgeUnifier: EdgeUnifier[N,N2,N3,E,E2,E3],
+      edgeUnifier: (H[N3,NL,E3,EL],Map[N,N3],Map[N2,N3]) => Unifier[E,E2,E3],
       graphBuilder: () => H[N3,NL,E3,EL],
       ev: This <:< H[N,NL,E,EL])
       : Seq[(H[N3,NL,E3,EL],
@@ -676,6 +674,7 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
         }
 
       // collect all edges between nodes in intersection
+      val eu = edgeUnifier(g,fn1.inverse,fn2.inverse)
       val seen1 = mutable.Set[E]()
       val seen2 = mutable.Set[E2]()
       val edges: Seq[(E3,E,E2)] =
@@ -688,7 +687,7 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
               if !seen1(e1) && !seen2(e2) && (this(e1) matches that(e2));
               _ = seen1 += e1
               _ = seen2 += e2
-        } yield (edgeUnifier.unify(e1,e2),e1,e2)
+        } yield (eu.unify(e1,e2),e1,e2)
 
       // add subsets of found edges to intersection
       for (i <- 0 to edges.length;
@@ -725,8 +724,7 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
     H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     that: H[N2,NL,E2,EL])(implicit
       nodeUnifier: Unifier[N,N2,N3],
-      // TODO: Probably I should make edgeUnifier a (H[N3,NL,E3,EL],Map[N,N3],Map[N2,N3]) => Unifier instead of EdgeUnifier
-      edgeUnifier: EdgeUnifier[N,N2,N3,E,E2,E3],
+      edgeUnifier: (H[N3,NL,E3,EL],Map[N,N3],Map[N2,N3]) => Unifier[E,E2,E3],
       graphBuilder: () => H[N3,NL,E3,EL],
       ev: This <:< H[N,NL,E,EL])
       : Seq[(H[N3,NL,E3,EL],
@@ -761,9 +759,9 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
       val g1edges = (this.edges -- f1.e.values).toSeq
       val g2edges = (that.edges -- f2.e.values).toSeq
       // create missing outer edges
-      edgeUnifier.initialise(pb,fn1,fn2)
-      val e1s = for (e1 <- g1edges) yield edgeUnifier.left(e1)
-      val e2s = for (e2 <- g2edges) yield edgeUnifier.right(e2)
+      val eu = edgeUnifier(pb,fn1,fn2)
+      val e1s = for (e1 <- g1edges) yield eu.left(e1)
+      val e2s = for (e2 <- g2edges) yield eu.right(e2)
       // add them to the graph
       po.addEdges(e1s ++ e2s)
       // create the edge maps
@@ -780,21 +778,45 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
           Arrow[N2,NL,E2,EL,N3,NL,E3,EL,H](that,po,fn2,fe2))
     }
   }
+
+  def toString[M](nm: Map[N,M]) = {
+    val em = (for (e <- edges) yield
+      (e, e.copy(nm(e.source), nm(e.target)))).toMap
+    val nl = for ((n,l) <- nodelabels) yield (nm(n),l)
+    val el = for ((e,l) <- edgelabels) yield (em(e),l)
+    s"$stringPrefix(" +
+      "nodes = Set(" + nm.values.mkString(", ") + "), " +
+      "edges = Set(" + em.values.mkString(", ") + ")" +
+      (if (nl.nonEmpty) s", nodelabels = $nl" else "") +
+      (if (el.nonEmpty) s", edgelabels = $el" else "") + ")"
+  }
 }
 
 trait ConcreteDiGraph[N,NL,E<:DiEdgeLike[N],EL,
   H[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,H]]
     extends BaseDiGraph[N,NL,E,EL] {
-  // type EdgeUpperBound[X] = DiEdgeLike[X]
-  // type G[X,Y,Z<:DiEdgeLike[X],W] = H[X,Y,Z,W]
+  // type G[Y,Z<:E,W] <: H[N,Y,Z,W] // Sandro's solution didn't work, investigate
+  // Also, a different solution would be to have "type G[X,Y,Z<:DiEdgeLike[X],W]
+  // <: BaseDiGraph[X,Y,Z,W]" (instead of BaseDiGraph[N,NL,E,EL])
   type G[Y,Z<:E,W] = H[N,Y,Z,W]
+  // type ET[X] = DiEdgeLike[X]
+  // type G[X,Y,Z<:ET[X],W] = H[X,Y,Z,W]
 }
 
 class DiGraph[N,NL,E<:DiEdgeLike[N],EL]
     extends BaseDiGraph[N,NL,E,EL]
        with ConcreteDiGraph[N,NL,E,EL,DiGraph] {
+  // type G[Y,Z<:E,W] = DiGraph[N,Y,Z,W]
   def empty = new DiGraph[N,NL,E,EL]
   def asThis = this
+}
+
+// -- Node and Edge Unifiers (for intersections and unions) --
+
+trait Unifier[T,U,V] {
+  def unify(x: T, y: U): V
+  def left(x: T): V
+  def right(y: U): V
 }
 
 object DiGraph {
@@ -812,7 +834,7 @@ object DiGraph {
     g
   }
 
-  def empty[N,NL,E<:DiEdgeLike[N],EL] = new DiGraph[N,NL,E,EL] // = const(List(), List())
+  implicit def empty[N,NL,E<:DiEdgeLike[N],EL]() = new DiGraph[N,NL,E,EL]
 
   def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) = new {
     def apply[E<:DiEdgeLike[N],EL](edges: (E,Option[EL])*) =
@@ -825,23 +847,6 @@ object DiGraph {
       const(nodes, edges)
   }
 
-
-  // -- Node and Edge Unifiers (for intersections and unions) --
-
-  trait Unifier[T,U,V] {
-    def unify(x: T, y: U): V
-    def left(x: T): V
-    def right(y: U): V
-  }
-
-  trait EdgeUnifier[N1,N2,N3,
-    E1<:DiEdgeLike[N1],E2<:DiEdgeLike[N2],E3<:DiEdgeLike[N3]]
-      extends Unifier[E1,E2,E3] {
-    def initialise[NL,EL,G[X,Y,Z<:DiEdgeLike[X],W]<:BaseDiGraph[X,Y,Z,W]](
-      g: G[N3,NL,E3,EL],
-      leftNodeMap: Map[N1,N3],
-      rightNodeMap: Map[N2,N3]): Unit
-  }
 
   // -- Isomorphisms of multiple directed graphs --
 
