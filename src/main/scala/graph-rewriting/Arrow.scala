@@ -1,6 +1,7 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
-import implicits._
+import scala.language.higherKinds  // TODO: necessary?
 
 /** Partial graph homomorphism. */
 abstract class Arrow[

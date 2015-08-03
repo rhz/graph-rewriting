@@ -1,7 +1,8 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import scala.annotation.tailrec
-import implicits._
+import scala.language.higherKinds  // TODO: necessary?
 
 object moments {
 

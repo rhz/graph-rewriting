@@ -1,3 +1,4 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import annotation.tailrec
@@ -6,51 +7,55 @@ import util.Random
 
 
 /**
- * This is a simplified version of the ''random tree'' data structure
- * used by KaSim (see [[https://github.com/jkrivine/KaSim/blob/master/dataStructures/random_tree.ml]]).
+ * Distribution tree data structure.
  *
- * The random tree data structure represents a distribution over the
- * integer interval `{0, 1 ... size - 1}` as a sequence of `size`
+ * The distribution tree data structure represents a distribution over
+ * the integer interval `{0, 1 ... size - 1}` as a sequence of `size`
  * double-precision floaing-point weight values.  (The weights are
  * stored in the leaves of a binary tree -- hence the name).  The
  * [[nextRandom]] method can be used to sample the distribution:
  * [[nextRandom]] picks a random element from the interval, with
  * probability proportional to the weight of the element.
  *
- * Unlike the random trees used by KaSim, instances of this class
- * represent fixed-size random trees, that is, the size of the tree is
- * fixed at creation time and can not be modified afterwards.
- * However, instances of this tree remain mutable in that the weights
- * of the leaves of the random tree can be updated after creation.
+ * Instances of this class represent fixed-size distribution trees,
+ * that is, the size of the tree is fixed at creation time and can not
+ * be modified afterwards.
  *
  * Usage examples:
  *
  * {{{
- *   // Create a random tree
- *   val rt = RandomTree(List(1.0, 2.0, 3.0), new scala.util.Random)
+ *   // Create a distribution tree
+ *   val dt1 = DistTree(List(1.0, 2.0, 3.0), new scala.util.Random)
  *
  *   // Histogram of random trials
  *   val hist1 = new Array[Int](3)
- *   for (_ <- 0 until 10000) hist1(rt.nextRandom._1) += 1
+ *   for (_ <- 0 until 10000) hist1(dt1.nextRandom._1) += 1
  *   hist1 // e.g. hist1: Array[Int] = Array(1657, 3252, 5091)
+ *
+ *   // Create an infinitely biased distribution tree
+ *   val dt2 = DistTree(List(1.0, 2.0, Double.PositiveInfinity),
+ *     new scala.util.Random)
  *
  *   // Histogram of infinitely biased trials
  *   val hist2 = new Array[Int](3)
- *   rt(2) = Double.PositiveInfinity
- *   for (_ <- 0 until 10000) hist2(rt.nextRandom._1) += 1
+ *   for (_ <- 0 until 10000) hist2(dt2.nextRandom._1) += 1
  *   hist2 // hist2: Array[Int] = Array(0, 0, 10000)
  * }}}
  *
- * @constructor creates a random tree with `size` leafs the weights
- *              of which are initialized to zero.
+ * This is a further simplified version of the ''random tree'' data
+ * structure used by LMS-Kappa (see
+ * [[https://github.com/sstucki/lms-kappa/blob/master/src/main/scala/kappa/RandomTree.scala]]).
+ *
+ * @constructor creates a distribution tree with `size` leafs the
+ *              weights of which are initialized to zero.
  *
  * @param weights the sequence of values used to initialize the
- *                leaf weights.  
+ *                leaf weights.
  *
  * @param prng the the pseudo-random number generator used by the
- *             random tree to generate random numbers.
+ *             distribution tree to generate random numbers.
  */
-class RandomTree(val size: Int, val prng: Random) {
+class DistTree(val size: Int, val prng: Random) {
 
   /**
    * The array holding the weights of the nodes of the tree.
@@ -66,41 +71,31 @@ class RandomTree(val size: Int, val prng: Random) {
   private val leavesOffset = size - 1
 
   /**
-   * Select the weight of the `i`th leaf of the random tree.
+   * Select the weight of the `i`th leaf of the tree.
    *
    * @param i the index of the leaf to select.
-   * @return the weight of the `i`th leaf of the random tree.
+   * @return the weight of the `i`th leaf of the tree.
    */
   def apply(i: Int) = weights(leavesOffset + i)
-  
-  /**
-   * Assign a new weight to the `i`th leaf of the random tree.
-   *
-   * @param i the index of the leaf to update.
-   * @param w the new weight of the `i`th leaf of the random tree.
-   */
-  def update(i: Int, w: Double) {
-    updateParentWeights(leavesOffset + i, w)
-  }
 
   /**
-   * Check whether the `i`th leaf of the random tree has infinite weight.
+   * Check whether the `i`th leaf of the tree has infinite weight.
    *
-   * @return `true` if the `i`th leaf of the random tree has infinite
+   * @return `true` if the `i`th leaf of the tree has infinite
    *         weight, `false` otherwise.
    */
   @inline def isInfinite(i: Int) = isInfNode(leavesOffset + i)
 
   /**
-   * Returns the sum of all the weights of the leaves of the random tree.
+   * Returns the sum of all the weights of the leaves of the tree.
    *
-   * @return the sum of all the weights of the leaves of the random tree.
+   * @return the sum of all the weights of the leaves of the tree.
    */
   def totalWeight = weights(0)
 
   /**
-   * Returns the index and weight of a random leaf of the random tree
-   * with probability proportional to the weight of that leaf.
+   * Returns the index and weight of a random leaf of the distribution
+   * tree with probability proportional to the weight of that leaf.
    *
    * More precisely, the probability of selecting leaf `i` is
    *
@@ -108,25 +103,28 @@ class RandomTree(val size: Int, val prng: Random) {
    *   P(i) = this.apply(i) / this.totalWeight
    * }}}
    *
-   * @return the index and weight of a random leaf of the random tree
-   *         with probability proportional to the weight of that leaf.
+   * @return the index and weight of a random leaf of the tree with
+   *         probability proportional to the weight of that leaf.
    */
-  def nextRandom: Int =
-    if (isInfNode(0)) findInfLeaf(0)
-    else {
-      val tw = totalWeight
-      if (tw == 0.0) throw new NoSuchElementException
-      val r = prng.nextDouble * tw
-      findRandomLeaf(0, r)
-    }
+  def nextRandom: (Int, Double) = {
+    val i =
+      if (isInfNode(0)) findInfLeaf(0)
+      else {
+        val tw = totalWeight
+        if (tw == 0.0) throw new NoSuchElementException
+        val r = prng.nextDouble * tw
+        findRandomLeaf(0, r)
+      }
+    (i, weights(i))
+  }
 
   /**
-   * Returns a string containing the leaf weights of this random tree.
+   * Returns a string containing the leaf weights of this tree.
    *
-   * @return a string containing the leaf weights of this random tree.
+   * @return a string containing the leaf weights of this tree.
    */
   override def toString =
-    weights drop leavesOffset mkString ("RandomTree(", ",", ")")
+    weights drop leavesOffset mkString ("DistTree(", ",", ")")
 
   /**
    * Helper function to update the weights of (inner) parent nodes
@@ -156,7 +154,7 @@ class RandomTree(val size: Int, val prng: Random) {
       if (x < lw) findRandomLeaf(li, x)
       else findRandomLeaf(rightChild(i), x - lw)
     }
-      
+
   /** Helper function to find any leaf node with infinite weight. */
   @tailrec
   private def findInfLeaf(i: Int): Int =
@@ -182,13 +180,13 @@ class RandomTree(val size: Int, val prng: Random) {
     }
 
   /** Returns the index of the parent of the node with index `i`. */
-  @inline private def parent(i: Int) = (i - 1) / 2 
+  @inline private def parent(i: Int) = (i - 1) / 2
 
   /** Returns the index of the left child of the node with index `i`. */
-  @inline private def leftChild(i: Int) = i * 2 + 1 
+  @inline private def leftChild(i: Int) = i * 2 + 1
 
   /** Rreturns the index of the right child of the node with index `i`. */
-  @inline private def rightChild(i: Int) = i * 2 + 2 
+  @inline private def rightChild(i: Int) = i * 2 + 2
 
   /** Returns `true` if the node with index `i` has infinite weight. */
   @inline private def isInfNode(i: Int) =
@@ -199,47 +197,46 @@ class RandomTree(val size: Int, val prng: Random) {
 }
 
 
-/** Factory methods for [[RandomTree]].  For example:
+/** Factory methods for [[DistTree]].  For example:
  *
  * {{{
- *   // Create a random tree with initial weights (1, 2, 3)
- *   val rt = RandomTree(List(1.0, 2.0, 3.0), new scala.util.Random)
+ *   // Create a distribution tree with initial weights (1, 2, 3)
+ *   val rt = DistTree(List(1.0, 2.0, 3.0), new scala.util.Random)
  * }}}
  */
-object RandomTree {
+object DistTree {
 
   /**
-   * Creates a random tree with `size` leafs the weights of which are
-   * initialized to zero.
+   * Creates a distribution tree with `size` leafs the weights of
+   * which are initialized to zero.
    *
-   * @param size the number of leaves in this random tree.  
+   * @param size the number of leaves in this tree.
    *
    * @param prng the the pseudo-random number generator used by the
-   *             random tree to generate random numbers.
+   *             distribution tree to generate random numbers.
    *
-   * @return a random tree with `size` leafs the weights of which
-   *         are initialized to zero.
+   * @return a distribution tree with `size` leafs the weights of
+   *         which are initialized to zero.
    */
-  def apply(size: Int, prng: Random) = new RandomTree(size, prng)
+  def apply(size: Int, prng: Random) = new DistTree(size, prng)
 
   /**
-   * Creates a random tree with the leaf weights initialized to the
-   * values given in `weights`.
+   * Creates a distribution tree with the leaf weights initialized to
+   * the values given in `weights`.
    *
    * @param weights the sequence of values used to initialize the
-   *                leaf weights.  
+   *                leaf weights.
    *
    * @param prng the the pseudo-random number generator used by the
-   *             random tree to generate random numbers.
+   *             distribution tree to generate random numbers.
    *
-   * @return a random tree with the leaf weights initialized to the
+   * @return a distribution tree with the leaf weights initialized to the
    *         values given in `weights`.
    */
   def apply(weights: Seq[Double], prng: Random) = {
-    val rt = new RandomTree(weights.size, prng)
+    val rt = new DistTree(weights.size, prng)
     weights.copyToArray(rt.weights, rt.leavesOffset)
     rt.initParentWeights(rt.leavesOffset)
     rt
   }
 }
-

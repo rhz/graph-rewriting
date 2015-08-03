@@ -1,3 +1,7 @@
+package uk.ac.ed.inf
+
+import scala.language.{ higherKinds, implicitConversions }
+
 package object graph_rewriting {
 
   import utils.Counter

@@ -1,6 +1,7 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
-import implicits._
+import scala.language.higherKinds  // TODO: necessary?
 
 trait Action[N,NL,E<:DiEdgeLike[N],EL,
   G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]]

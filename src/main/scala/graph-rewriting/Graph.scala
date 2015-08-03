@@ -1,7 +1,9 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.language.higherKinds  // TODO: necessary?
 
 // This is needed because mutable.Map.keySet returns a collection.Set
 // and thus Node.edges has to be of this type.  Then the line
@@ -11,7 +13,6 @@ import scala.collection.mutable
 import scala.collection.Set
 
 import utils._
-import implicits._
 
 abstract class BaseGraph[N,NL,E<:EdgeLike[N],EL] {
   graph =>
@@ -482,8 +483,8 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
               for ((label,edges) <- xs; ue <- edges)
               yield (for {
                 ve <- m(label);
-                val un = this(u).opp(ue)
-                val vn = that(v).opp(ve)
+                un = this(u).opp(ue)
+                vn = that(v).opp(ve)
                 if this(un) matches that(vn)
               } yield (ue,un,ve,vn))
 
@@ -604,9 +605,9 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
         // get an anchor in the domain for that label
         val anchor = domNodesByLabel(label).head
 
-        codNodes.collectFirst({ c: N2 =>
+        codNodes.collectFirst(Function.unlift { c: N2 =>
           extendBijection(Vector(anchor -> c), Map(anchor -> c),
-            Map.empty, Set.empty, Set.empty) }.unlift)
+            Map.empty, Set.empty, Set.empty) })
       }
     }
   }

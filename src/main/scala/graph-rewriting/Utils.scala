@@ -1,3 +1,4 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 object utils {
@@ -13,35 +14,35 @@ object utils {
       } yield (y +: yss)
   }
 
-  /** Implicit class transforming `Function1`s that return `Option`
-    * into `PartialFunction`s.
-    */
-  implicit class UnliftableFunction[A,B](f: A => Option[B]) {
+  // /** Implicit class transforming `Function1`s that return `Option`
+  //   * into `PartialFunction`s.
+  //   */
+  // implicit class UnliftableFunction[A,B](f: A => Option[B]) {
 
-    def unlift = new PartialFunction[A,B] {
-      private[this] var tested = false
-      private[this] var arg: A = _
-      private[this] var ans: Option[B] = None
-      private[this] def cache(a: A) {
-        if (!tested) {
-          tested = true
-          arg = a
-          ans = f(a)
-        } else if (a != arg) {
-          arg = a
-          ans = f(a)
-        }
-      }
-      def isDefinedAt(a: A) = {
-        cache(a)
-        ans.isDefined
-      }
-      def apply(a: A) = {
-        cache(a)
-        ans.get
-      }
-    }
-  }
+  //   def unlift = new PartialFunction[A,B] {
+  //     private[this] var tested = false
+  //     private[this] var arg: A = _
+  //     private[this] var ans: Option[B] = None
+  //     private[this] def cache(a: A) {
+  //       if (!tested) {
+  //         tested = true
+  //         arg = a
+  //         ans = f(a)
+  //       } else if (a != arg) {
+  //         arg = a
+  //         ans = f(a)
+  //       }
+  //     }
+  //     def isDefinedAt(a: A) = {
+  //       cache(a)
+  //       ans.isDefined
+  //     }
+  //     def apply(a: A) = {
+  //       cache(a)
+  //       ans.get
+  //     }
+  //   }
+  // }
 
   class Counter private (private var i: Int) {
     def next: Int = {

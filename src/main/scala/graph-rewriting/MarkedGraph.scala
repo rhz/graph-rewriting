@@ -1,3 +1,4 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 // This is needed because mutable.Map.keySet returns a collection.Set
@@ -8,9 +9,9 @@ package graph_rewriting
 import scala.collection.Set
 import scala.collection.mutable
 
-import utils._
-import implicits._
+import scala.language.higherKinds  // TODO: necessary?
 
+import utils._
 
 abstract class BaseMarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
     extends BaseDiGraph[N,NL,E,EL] {
@@ -183,8 +184,8 @@ abstract class BaseMarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
                 for ((label,edges) <- xs; ue <- edges)
                 yield (for {
                   ve <- m(label);
-                  val un = this(u).opp(ue)
-                  val vn = thatM(v).opp(ve)
+                  un = this(u).opp(ue)
+                  vn = thatM(v).opp(ve)
                   if this(un) matches thatM(vn)
                 } yield (ue,un,ve,vn))
 
@@ -308,9 +309,9 @@ abstract class BaseMarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
           // get an anchor in the domain for that label
           val anchor = domNodesByLabel(label).head
 
-          codNodes.collectFirst({ c: N2 =>
+          codNodes.collectFirst(Function.unlift { c: N2 =>
             extendBijection(Vector(anchor -> c), Map(anchor -> c),
-              Map.empty, Set.empty, Set.empty) }.unlift)
+              Map.empty, Set.empty, Set.empty) })
         }
       }
     }

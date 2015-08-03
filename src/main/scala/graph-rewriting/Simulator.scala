@@ -1,3 +1,4 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import scala.collection.mutable
@@ -47,18 +48,18 @@ class Simulator[N,NL,E<:DiEdgeLike[N],EL] {
         (r.rate.value * matches(r.lhs).length)
 
       // Build the propensity tree
-      val tree = RandomTree(propensities, rand)
+      val tree = DistTree(propensities, rand)
       val totalProp = tree.totalWeight
 
       if (totalProp == 0 || totalProp.isNaN)
         throw new IllegalStateException("no more events")
-      
+
       // Advance time
       val dt = -math.log(rand.nextDouble) / totalProp
       time += dt
 
       // Pick a rule and event at random
-      val r = rules(tree.nextRandom)
+      val r= rules(tree.nextRandom._1)
       val e = randomElement(matches(r.lhs))
 
       // Apply the rule/event

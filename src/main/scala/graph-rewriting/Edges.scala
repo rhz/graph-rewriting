@@ -1,6 +1,9 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import scala.collection.Set
+
+import scala.language.higherKinds  // TODO: necessary?
 
 abstract class EdgeLike[N] {
   def nodes: Set[N]

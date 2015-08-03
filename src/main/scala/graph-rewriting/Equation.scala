@@ -1,8 +1,9 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import scala.collection.mutable
+import scala.language.higherKinds  // TODO: necessary?
 import utils.Counter
-import implicits._
 
 // TODO: Division by polynomials (RatePn and Pn) is tough.
 
