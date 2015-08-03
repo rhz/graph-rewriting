@@ -351,6 +351,7 @@ object Graph {
   def withType[N,NL,E<:EdgeLike[N],EL] = new {
     def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
       const(nodes, edges)
+    def empty = new Graph[N,NL,E,EL]
   }
 }
 
@@ -634,9 +635,10 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
 
     // set of nodes in `that` indexed by nodes in `this` that match
     val nodeMatches: Map[N,Seq[N2]] =
-      (g1nodes, g1nodes map (u => g2nodes filter (v =>
-        this(u) matches that(v)))).zipped.toMap
-    // TODO: What if this(u) matches that(v) but not the other way?
+      (g1nodes, g1nodes map (u => g2nodes filter (v => {
+        val n = this(u); val m = that(v);
+        !n.isLabelled || !m.isLabelled || (n.label == m.label)
+      }))).zipped.toMap
 
     // all possible node intersections
     // TODO: Calling `cross` is unnecessarily slow and might blow up
@@ -719,7 +721,6 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
     }).flatten
   }
 
-  /** Unions of subobjects of `this` and `that`. */
   def unions[N2,E2<:DiEdgeLike[N2],N3,E3<:DiEdgeLike[N3],
     H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     that: H[N2,NL,E2,EL])(implicit
@@ -729,10 +730,28 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
       ev: This <:< H[N,NL,E,EL])
       : Seq[(H[N3,NL,E3,EL],
              Arrow[N ,NL,E ,EL,N3,NL,E3,EL,H],
+             Arrow[N2,NL,E2,EL,N3,NL,E3,EL,H])] =
+    for ((_,_,_,po,f1,f2) <- intersectionsAndUnions[N2,E2,N3,E3,H](that))
+    yield (po,f1,f2)
+
+  /** Unions of subobjects of `this` and `that`. */
+  def intersectionsAndUnions[
+    N2,E2<:DiEdgeLike[N2],N3,E3<:DiEdgeLike[N3],
+    H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    that: H[N2,NL,E2,EL])(implicit
+      nodeUnifier: Unifier[N,N2,N3],
+      edgeUnifier: (H[N3,NL,E3,EL],Map[N,N3],Map[N2,N3]) => Unifier[E,E2,E3],
+      graphBuilder: () => H[N3,NL,E3,EL],
+      ev: This <:< H[N,NL,E,EL])
+      : Seq[(H[N3,NL,E3,EL],
+             Arrow[N3,NL,E3,EL,N ,NL,E ,EL,H],
+             Arrow[N3,NL,E3,EL,N2,NL,E2,EL,H],
+             H[N3,NL,E3,EL],
+             Arrow[N ,NL,E ,EL,N3,NL,E3,EL,H],
              Arrow[N2,NL,E2,EL,N3,NL,E3,EL,H])] = {
 
     // This for shows that intersections and unions are in bijection
-    for ((pb,f1,f2) <- intersections(that)(nodeUnifier,edgeUnifier,graphBuilder,ev)) yield {
+    for ((pb,f1,f2) <- intersections[N2,E2,N3,E3,H](that)) yield {
       // create union
       val po: H[N3,NL,E3,EL] = graphBuilder() // pb.copy
       po += pb // little hack again, see intersections
@@ -773,10 +792,39 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
       for (e <- g2edges if that.edgelabels contains e)
         po(fe2(e)).label = that.edgelabels(e)
 
-      // TODO: Why aren't these types inferred?
-      (po,Arrow[N ,NL,E ,EL,N3,NL,E3,EL,H](this.asThis,po,fn1,fe1),
-          Arrow[N2,NL,E2,EL,N3,NL,E3,EL,H](that,po,fn2,fe2))
+      (pb,f1,f2,po,
+        // TODO: Why aren't these types inferred?
+        Arrow[N ,NL,E ,EL,N3,NL,E3,EL,H](this.asThis,po,fn1,fe1),
+        Arrow[N2,NL,E2,EL,N3,NL,E3,EL,H](that,po,fn2,fe2))
     }
+  }
+
+  def leftUnions[
+    H[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,H]](
+    r: Rule[N,NL,E,EL,H])(implicit
+      nodeUnifier: Unifier[N,N,N],
+      edgeUnifier: (H[N,NL,E,EL],Map[N,N],Map[N,N]) => Unifier[E,E,E],
+      graphBuilder: () => H[N,NL,E,EL],
+      ev: This <:< H[N,NL,E,EL])
+      : Seq[H[N,NL,E,EL]] =
+    // TODO: relevance test
+    for ((mg,_,_) <- unions[N,E,N,E,H](r.lhs)) yield mg
+
+  def rightUnions[
+    H[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,H]](
+    r: Rule[N,NL,E,EL,H])(implicit
+      nodeUnifier: Unifier[N,N,N],
+      edgeUnifier: (H[N,NL,E,EL],Map[N,N],Map[N,N]) => Unifier[E,E,E],
+      graphBuilder: () => H[N,NL,E,EL],
+      ev: This <:< H[N,NL,E,EL])
+      : Seq[H[N,NL,E,EL]] = {
+    val ropp = r.reversed
+    for ((mg,_,m) <- unions[N,E,N,E,H](ropp.lhs);
+      rmg = mg.copy; (comatch,_,_) = ropp(m);
+      lmg = mg.copy; _ = r(comatch)
+      // TODO: relevance test
+      // derivability test
+      if mg iso rmg) yield lmg
   }
 
   def toString[M](nm: Map[N,M]) = {
@@ -790,6 +838,9 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
       (if (nl.nonEmpty) s", nodelabels = $nl" else "") +
       (if (el.nonEmpty) s", edgelabels = $el" else "") + ")"
   }
+
+  // TODO: toDot
+  // override def toDot: String
 }
 
 trait ConcreteDiGraph[N,NL,E<:DiEdgeLike[N],EL,
@@ -845,11 +896,13 @@ object DiGraph {
   def withType[N,NL,E<:DiEdgeLike[N],EL] = new {
     def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
       const(nodes, edges)
+    def empty = new Graph[N,NL,E,EL]
   }
 
 
   // -- Isomorphisms of multiple directed graphs --
 
+  // QUESTION: Is the companion object really a good place to put this function?
   def isos[N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     gs: Traversable[G[N,NL,E,EL]],

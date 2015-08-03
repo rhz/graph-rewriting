@@ -43,6 +43,7 @@ case class IdDiEdge[I,N](id: I, source: N, target: N)
     extends DiEdgeLike[N] {
   type This[M] = IdDiEdge[I,M]
   def copy[M](source: M, target: M): This[M] = IdDiEdge(id, source, target)
+  override def toString = s"$source~~>$target"
 }
 
 // Fancy syntax for IdDiEdge?  In Implicits.scala

@@ -1,12 +1,14 @@
 package graph_rewriting
 
 import implicits._
-import moments._ // this imports N=String and E=IdDiEdge[Int,N]
+import moments._
 
 object VoterModel {
+  type N = String
+  type E = IdDiEdge[Int,N]
   type NL = String
   type EL = String
-  val G = Graph.withType[N,NL,E,EL]
+  val G = DiGraph.withType[N,NL,E,EL]
   def main(args: Array[String]): Unit = {
     // first flip
     val e = "u"~~>"v"
@@ -41,16 +43,16 @@ object VoterModel {
     val brw3 = G("u"->"blue","v"->"red","w")("w"~~>"v")
     val swap1b = Rule(brw1, brw3, Map("u"->"u","v"->"v","w"->"w"),
       Map(), "k1")
-    def pairApproximation(g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
+    def pairApproximation(g: DiGraph[N,NL,E,EL]): Option[Pn[N,NL,E,EL,DiGraph]] =
       if (g.nodes.size == 3 && g.edges.size == 2 && g.isConnected) {
         val List(e1, e2) = g.edges.toList
         val intersection = e1.nodes &~ (e1.nodes &~ e2.nodes)
-        Mn(g.inducedSubgraph(e1.nodes)) *
-           g.inducedSubgraph(e2.nodes) /
-           g.inducedSubgraph(intersection)
+        Some(Pn(Mn(g.inducedSubgraph(e1.nodes)) *
+                   g.inducedSubgraph(e2.nodes) /
+                   g.inducedSubgraph(intersection)))
       } else None
-    def noParallelEdges(g: Graph[N,NL,E,EL]): Option[Mn[N,NL,E,EL]] =
-      if (g.nodes.size == 2 && g.edges.size == 2) Some(Mn.zero) else None
+    def noParallelEdges(g: DiGraph[N,NL,E,EL]): Option[Pn[N,NL,E,EL,DiGraph]] =
+      if (g.nodes.size == 2 && g.edges.size == 2) Some(Pn.zero) else None
     val redNode = G("u" -> "red")()
     val twoRedNodes = G("u" -> "red", "v" -> "red")()
     val odesWoTrans = generateMeanODEs(2,
@@ -60,8 +62,8 @@ object VoterModel {
     println()
     val odes = generateMeanODEs(10,
       List(flip0a,flip0b,flip1a,flip1b,swap0a,swap0b,swap1a,swap1b),
-      List(redNode),
-      splitConnectedComponents[N,NL,E,EL] _,
+      List(G("u"->"red","v"->"blue")("u"~~>"v")), //redNode),
+      splitConnectedComponents[N,NL,E,EL,DiGraph] _,
       pairApproximation _,
       noParallelEdges _)
     val printer = ODEPrinter(odes)

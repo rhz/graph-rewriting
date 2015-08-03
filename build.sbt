@@ -1,10 +1,21 @@
 name := "graph-rewriting"
 
-version := "0.1"
+organization := "uk.ac.ed.inf"
 
-scalaVersion := "2.11.2"
+version := "0.2"
 
-resolvers += "ScalaTools snapshots at Sonatype" at
+scalaVersion := "2.11.6"
+
+resolvers += "Sonatype snapshots" at
   "https://oss.sonatype.org/content/repositories/snapshots/"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test"
+val scalajs = false
+
+if (scalajs) {
+  enablePlugins(ScalaJSPlugin);
+  // ScalaTest hasn't been ported yet to Scala.js
+  // libraryDependencies += "org.scalatest" %%% "scalatest_2.11" % "2.2.4" % "test"
+} else {
+  libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
+}
+

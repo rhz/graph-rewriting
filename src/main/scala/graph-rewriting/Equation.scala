@@ -40,7 +40,7 @@ case class RateMn(
       : Mn[N,NL,E,EL,G] = m.coef match {
     case RatePn(Vector(rm)) => Mn(this / rm, m.denom, m.numer)
     case _ => throw new UnsupportedOperation(
-      "can't divide by a polynomial")
+      "can't divide by a rate polynomial")
   }
   def * [N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
@@ -83,20 +83,32 @@ case class RateMn(
   val eps = 1e-16
   def isZero: Boolean = (coef >= -eps) && (coef <= eps)
 
-  val formatter = new java.text.DecimalFormat("#.###")
   override def toString = this match {
-    case RateMn(c  , Vector(), Vector()) => formatter.format(c)
+    case RateMn(c  , Vector(), Vector()) => c.toString
     case RateMn(1.0, numer   , Vector()) => numer mkString " * "
     case RateMn(c  , numer   , Vector()) =>
-      s"${formatter.format(c)} * "  + (numer mkString " * ")
+      s"$c * "  + numer.mkString(" * ")
     case RateMn(c  , Vector(), denom   ) =>
-      s"${formatter.format(c)} / (" + (denom mkString " * ") + ")"
+      s"$c / (" + denom.mkString(" * ") + ")"
     case RateMn(1.0, numer   , denom   ) =>
-      (numer mkString " * ") + " / (" + (denom mkString " * ") + ")"
+      (numer mkString " * ") + " / (" + denom.mkString(" * ") + ")"
     case RateMn(c  , numer   , denom   ) =>
-      s"${formatter.format(c)} * " + (numer mkString " * ") + " / (" +
-      (denom mkString " * ") + ")"
+      s"$c * " + numer.mkString(" * ") + " / (" + denom.mkString(" * ") + ")"
   }
+  // val formatter = new java.text.DecimalFormat("#.###")
+  // override def toString = this match {
+  //   case RateMn(c  , Vector(), Vector()) => formatter.format(c)
+  //   case RateMn(1.0, numer   , Vector()) => numer mkString " * "
+  //   case RateMn(c  , numer   , Vector()) =>
+  //     s"${formatter.format(c)} * "  + numer.mkString(" * ")
+  //   case RateMn(c  , Vector(), denom   ) =>
+  //     s"${formatter.format(c)} / (" + denom.mkString(" * ") + ")"
+  //   case RateMn(1.0, numer   , denom   ) =>
+  //     (numer mkString " * ") + " / (" + denom.mkString(" * ") + ")"
+  //   case RateMn(c  , numer   , denom   ) =>
+  //     s"${formatter.format(c)} * " + numer.mkString(" * ") + " / (" +
+  //     denom.mkString(" * ") + ")"
+  // }
 }
 
 object RateMn {
@@ -140,7 +152,7 @@ case class RatePn(terms: Vector[RateMn]) {
       : Mn[N,NL,E,EL,G] = m.coef match {
     case RatePn(Vector(rm)) => Mn(this / rm, m.denom, m.numer)
     case _ => throw new UnsupportedOperation(
-      "can't divide by a polynomial")
+      "can't divide by a rate polynomial")
   }
   def * [N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
@@ -218,14 +230,18 @@ class Mn[N,NL,E<:DiEdgeLike[N],EL,
   def / (g: G[N,NL,E,EL]) = Mn(coef, numer, denom :+ g)
   def * (m: Mn[N,NL,E,EL,G]) =
     Mn(coef * m.coef, numer ++ m.numer, denom ++ m.denom)
-  def / (m: Mn[N,NL,E,EL,G]) =
-    m.coef match {
-      case RatePn(Vector(rm)) =>
-        Mn(coef / rm, numer ++ m.denom, denom ++ m.numer)
-      case _ => throw new UnsupportedOperation(
-        "can't divide by a polynomial")
-    }
+  def / (m: Mn[N,NL,E,EL,G]) = m.coef match {
+    case RatePn(Vector(rm)) =>
+      Mn(coef / rm, numer ++ m.denom, denom ++ m.numer)
+    case _ => throw new UnsupportedOperation(
+      "can't divide by a rate polynomial")
+  }
   def * (p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = p map (_ * this)
+  def / (p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = p match {
+    case Pn(Vector(m)) => this / m
+    case _ => throw new UnsupportedOperation(
+      "can't divide by a graph polynomial")
+  }
   // addition and substraction
   def + (k: Rate) = Pn(this, Mn[N,NL,E,EL,G]( RateMn(k)))
   def - (k: Rate) = Pn(this, Mn[N,NL,E,EL,G](-RateMn(k)))
@@ -348,6 +364,11 @@ class Pn[N,NL,E<:DiEdgeLike[N],EL,
   def / (m: Mn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = map(_ / m)
   def * (p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] =
     Pn(for (m1 <- terms; m2 <- p.terms) yield m1 * m2)
+  def / (p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = p match {
+    case Pn(Vector(m)) => map(_ / m)
+    case _ => throw new UnsupportedOperation(
+      "can't divide by a graph polynomial")
+  }
   // addition and substraction
   def + (k: Rate) = Pn(terms :+ Mn[N,NL,E,EL,G]( RateMn(k)))
   def - (k: Rate) = Pn(terms :+ Mn[N,NL,E,EL,G](-RateMn(k)))
@@ -434,14 +455,12 @@ sealed abstract class Eq[N,NL,E<:DiEdgeLike[N],EL,
   G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] { //(
   // implicit val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) {
   val lhs: G[N,NL,E,EL]
-  // val rhs: Pn[N,NL,E,EL,G]
+  val rhs: Pn[N,NL,E,EL,G]
 }
-// NOTE: rhs has to be a monomial because we do not know
-// how to divide by polynomials.
 case class AlgEq[N,NL,E<:DiEdgeLike[N],EL,
   G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   lhs: G[N,NL,E,EL],
-  rhs: Mn[N,NL,E,EL,G]) //(
+  rhs: Pn[N,NL,E,EL,G]) //(
   // implicit override val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
     extends Eq[N,NL,E,EL,G] {
   override def toString = s"$lhs = $rhs"
@@ -463,7 +482,7 @@ abstract class GraphNaming[N,NL,E<:DiEdgeLike[N],EL,
   // implicit val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
     extends (G[N,NL,E,EL] => String) {
   // def apply(g: G[N,NL,E,EL]): String
-  def seq: Traversable[(G[N,NL,E,EL], String)]
+  def seq: Seq[(G[N,NL,E,EL],String)]
 }
 class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL,
   G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
@@ -472,19 +491,19 @@ class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL,
     extends GraphNaming[N,NL,E,EL,G] {
 
   val cnt = Counter(start)
-  val index = mutable.Map[G[N,NL,E,EL], Int]()
-  val isos = mutable.Map[G[N,NL,E,EL], G[N,NL,E,EL]]()
+  val index = mutable.Map[G[N,NL,E,EL],Int]()
+  val isos = mutable.Map[G[N,NL,E,EL],G[N,NL,E,EL]]()
 
   def apply(g: G[N,NL,E,EL]): String =
     if (index contains g) s"F${index(g)}"
     else if (isos contains g) s"F${index(isos(g))}"
-    else index find { case (h, _) => g iso h } match {
-      case Some((h, _)) => { isos(g) = h; s"F${index(h)}" }
+    else index find { case (h,_) => g iso h } match {
+      case Some((h,_)) => { isos(g) = h; s"F${index(h)}" }
       case None => { val i = cnt.next; index(g) = i; s"F$i" }
     }
 
-  def seq: Traversable[(G[N,NL,E,EL], String)] =
-    for ((g, i) <- index.toSeq.sortBy(_._2)) yield (g, s"F$i")
+  def seq: Seq[(G[N,NL,E,EL],String)] =
+    for ((g,i) <- index.toSeq.sortBy(_._2)) yield (g,s"F$i")
 }
 
 
@@ -498,7 +517,7 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
   // TODO: subs and zeros should be "smart maps" that when given
   // a graph isomorphic to g and g is a key of the map, it returns
   // the value associated to g
-  val subs: Map[G[N,NL,E,EL], Mn[N,NL,E,EL,G]] = eqs.collect({
+  val subs: Map[G[N,NL,E,EL],Pn[N,NL,E,EL,G]] = eqs.collect({
     case AlgEq(lhs, rhs) if !rhs.isZero => (lhs, rhs) }).toMap
 
   val zeros: Set[G[N,NL,E,EL]] = eqs.collect({
@@ -509,17 +528,17 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
     if (hasZero(m.numer)) Pn.zero
     else {
       var changed = false
-      def sub(gs: Vector[G[N,NL,E,EL]]): Mn[N,NL,E,EL,G] = {
+      def sub(gs: Vector[G[N,NL,E,EL]]): Pn[N,NL,E,EL,G] = {
         for (g <- gs) yield
           // TODO: I should probably check if g is iso to something in subs
           if ((subs contains g) && (subs(g) != Mn(g))) {
             changed = true
             subs(g)
-          } else Mn(g)
-      }.foldLeft(Mn.one[N,NL,E,EL,G])(_*_)
+          } else Pn(Mn(g))
+      }.foldLeft(Pn.one[N,NL,E,EL,G])(_*_)
       val numer = sub(m.numer)
       val denom = sub(m.denom)
-      val res = Pn(numer * m.coef / denom)
+      val res = numer * m.coef / denom
       if (changed) substitutePn(res)
       else res
     }
@@ -534,7 +553,7 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
     gs exists (zeros contains _)
 
   lazy val simplify: Traversable[ODE[N,NL,E,EL,G]] =
-    for (ODE(lhs, rhs) <- eqs) yield ODE(lhs, substitutePn(rhs))
+    for (ODE(lhs,rhs) <- eqs) yield ODE(lhs,substitutePn(rhs))
 
   def strMn[T](m: Mn[N,NL,E,EL,G], name: G[N,NL,E,EL] => T): String =
     (if (m.coef == RatePn.one) ""
@@ -552,13 +571,14 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
 
   def print(name: GraphNaming[N,NL,E,EL,G]): Unit = {
 
-    val lines = for (ODE(lhs, rhs) <- simplify) yield (
+    // TODO: Sort output
+    val lines = for (ODE(lhs,rhs) <- simplify) yield (
       s"d${name(lhs)} = " + (
         if (rhs.isEmpty) "0"
-        else rhs.terms.map(strMn(_, name)).mkString(" + ")))
+        else rhs.terms.map(strMn(_,name)).mkString(" + ")))
 
     // Print fragments names
-    for ((g, n) <- name.seq) println(s"$n := ${strGraph(g)}")
+    for ((g,n) <- name.seq) println(s"$n := ${strGraph(g)}")
     println()
 
     // Print the system of diff eqs

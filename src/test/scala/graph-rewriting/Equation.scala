@@ -7,8 +7,8 @@ class EquationSpec extends FlatSpec with Matchers {
 
   // -- Monomials --
 
-  val g1 = Graph(1 -> "A")()
-  val g2 = Graph(1 -> "A")()
+  val g1 = DiGraph(1 -> "A")()
+  val g2 = DiGraph(1 -> "A")()
   val g3 = g2.copy
 
   "A monomial" should "multiply and divide rates and graphs" in {
@@ -76,13 +76,20 @@ class EquationSpec extends FlatSpec with Matchers {
     mn1 shouldBe Mn("k1", g1)
   }
 
+  // -- Polynomials --
+
+  type N = Int
+  type E = IdDiEdge[Int,Int]
+  type NL = String
+  type EL = String
+
   "A polynomial" should "add and substract monomials" in {
     val mn1 = Mn(g1)
     val mn2 = Mn(g2)
-    val pn1 = Pn.zero + mn1
-    pn1.terms shouldBe Vector(Mn.zero, mn1)
+    val pn1 = Pn.zero[N,NL,E,EL,DiGraph] + mn1
+    pn1.terms shouldBe Vector(Mn.zero[N,NL,E,EL,DiGraph], mn1)
     val pn2 = pn1 - mn2
-    pn2.terms shouldBe Vector(Mn.zero, mn1, -mn2)
+    pn2.terms shouldBe Vector(Mn.zero[N,NL,E,EL,DiGraph], mn1, -mn2)
   }
 
   it should "multiply and divide numbers, graphs and monomials" in {
@@ -117,12 +124,12 @@ class EquationSpec extends FlatSpec with Matchers {
     // FIXME: Implicit conversion from Graph to Mn not working here
     // val pn1 = g1 - g1
     val pn1 = Mn(g1) - g1
-    pn1.simplify shouldBe Pn.zero
+    pn1.simplify shouldBe Pn.zero[N,NL,E,EL,DiGraph]
     val pn2 = Mn(g1) + g2 - g3 + Mn("k2", g2)
     pn2.simplify.terms shouldBe Vector(Mn(RatePn(RateMn("k2"), RateMn(1)), g1))
     val pn3 = pn2.simplify + g1
     pn3.simplify.terms shouldBe Vector(Mn(RatePn(RateMn(2), RateMn("k2")), g1))
-    val g4 = Graph(2 -> "A")()
+    val g4 = DiGraph(2 -> "A")()
     val pn5 = Mn(g1) + g4
     pn5.simplify.terms shouldBe Vector(Mn(RateMn(2), g1))
     pn5.simplify.terms should not be (Vector(Mn(RateMn(2), g4)))
@@ -131,17 +138,17 @@ class EquationSpec extends FlatSpec with Matchers {
   }
 
   "Equations" should "simplify" in {
-    val eq1 = AlgEq(g1, Mn.zero)
-    val g4 = Graph(4 -> "B")()
-    val g5 = Graph(5 -> "C")()
-    val g6 = Graph(6 -> "D")()
-    val eq2 = AlgEq(g4, Mn(g1) * g5)
+    val eq1 = AlgEq(g1, Pn.zero[N,NL,E,EL,DiGraph])
+    val g4 = DiGraph(4 -> "B")()
+    val g5 = DiGraph(5 -> "C")()
+    val g6 = DiGraph(6 -> "D")()
+    val eq2 = AlgEq(g4, Pn(Mn(g1) * g5))
     val eq3 = ODE(g5, Mn(g4) + Mn("k2", g2) + g6)
-    val eqs = ODEPrinter(List(eq1, eq2, eq3))
-    eqs.subs shouldBe Map(g4 -> Mn(g1) * g5)
+    val eqs = ODEPrinter(List(eq1,eq2,eq3))
+    eqs.subs shouldBe Map(g4 -> Pn(Mn(g1) * g5))
     eqs.zeros shouldBe Set(g1)
     // eqs.index shouldBe Map(g5 -> 0, g6 -> 1)
-    eqs.simplify shouldBe List(ODE(g5, g6))
+    eqs.simplify shouldBe List(ODE(g5,g6))
     // TODO: Check for double simplification
   }
 }

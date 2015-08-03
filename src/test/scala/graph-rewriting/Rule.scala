@@ -5,7 +5,11 @@ import implicits._
 
 class RuleSpec extends FlatSpec with Matchers {
 
-  val G = Graph.withType[Int,String,IdDiEdge[Int,Int],String]
+  type N = Int
+  type E = IdDiEdge[Int,N]
+  type NL = String
+  type EL = String
+  val G = DiGraph.withType[N,NL,E,EL]
 
   // -- Nodes --
 
@@ -31,7 +35,11 @@ class RuleSpec extends FlatSpec with Matchers {
     val rhs = G(1 -> "A", 2 -> "A")()
     val action = AddNode(lhs, rhs, Map(1 -> 2), Map(), 1)
     val inv = action.reversed
-    inv shouldBe a [DelNode[_,_,_,_]]
+    // inv shouldBe a [DelNode[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: DelNode[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(2 -> 1)
@@ -63,7 +71,11 @@ class RuleSpec extends FlatSpec with Matchers {
     val lhs = G(1 -> "A")()
     val action = DelNode(lhs, rhs, Map(2 -> 1), Map(), 1)
     val inv = action.reversed
-    inv shouldBe a [AddNode[_,_,_,_]]
+    // inv shouldBe a [AddNode[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: AddNode[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(1 -> 2)
@@ -107,7 +119,11 @@ class RuleSpec extends FlatSpec with Matchers {
     val action = SetNodeLabel(lhs, rhs, Map(1 -> 1, 2 -> 2),
       Map(edgeLhs -> edgeRhs), 1)
     val inv = action.reversed
-    inv shouldBe a [SetNodeLabel[_,_,_,_]]
+    // inv shouldBe a [SetNodeLabel[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: SetNodeLabel[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(1 -> 1, 2 -> 2)
@@ -143,7 +159,11 @@ class RuleSpec extends FlatSpec with Matchers {
     val rhs = G(1 -> "A", 2 -> "B")(edgeRhs)
     val action = AddEdge(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(), edgeRhs)
     val inv = action.reversed
-    inv shouldBe a [DelEdge[_,_,_,_]]
+    // inv shouldBe a [DelEdge[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: DelEdge[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(1 -> 1, 2 -> 2)
@@ -177,7 +197,11 @@ class RuleSpec extends FlatSpec with Matchers {
     val rhs = G(1 -> "A", 2 -> "B")()
     val action = DelEdge(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(), edgeLhs)
     val inv = action.reversed
-    inv shouldBe a [AddEdge[_,_,_,_]]
+    // inv shouldBe a [AddEdge[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: AddEdge[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(1 -> 1, 2 -> 2)
@@ -219,7 +243,11 @@ class RuleSpec extends FlatSpec with Matchers {
     val action = SetEdgeLabel(lhs, rhs, Map(1 -> 1, 2 -> 2),
       Map(edgeLhs -> edgeRhs), edgeLhs)
     val inv = action.reversed
-    inv shouldBe a [SetEdgeLabel[_,_,_,_]]
+    // inv shouldBe a [SetEdgeLabel[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: SetEdgeLabel[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(1 -> 1, 2 -> 2)
@@ -271,11 +299,11 @@ class RuleSpec extends FlatSpec with Matchers {
     l7(e3).label = "label 1"
     r7(e3).label = "label 2"
     Rule(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), "k7").actions shouldBe
-      Seq(AddNode(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 3),
+      Seq(DelEdge(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), e1),
           DelNode(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 0),
-          SetNodeLabel(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 1),
+          AddNode(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 3),
           AddEdge(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), e2),
-          DelEdge(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), e1),
+          SetNodeLabel(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), 1),
           SetEdgeLabel(l7, r7, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), e3))
   }
 
@@ -315,7 +343,11 @@ class RuleSpec extends FlatSpec with Matchers {
     rhs(e3).label = "label 2"
     val r = Rule(lhs, rhs, Map(1 -> 1, 2 -> 2), Map(e3 -> e3), "k")
     val inv = r.reversed("ki")
-    inv shouldBe a [Rule[_,_,_,_]]
+    // inv shouldBe a [Rule[_,_,_,_,DiGraph]]
+    assert(inv match {
+      case _: Rule[N,NL,E,EL,DiGraph] => true
+      case _ => false
+    })
     inv.dom shouldBe rhs
     inv.cod shouldBe lhs
     inv.n shouldBe Map(1 -> 1, 2 -> 2)
@@ -346,7 +378,7 @@ class RuleSpec extends FlatSpec with Matchers {
     // TODO: How do we test for isomorphic matches?
     // m.n shouldBe m2.n
     // m.e shouldBe m2.e
-    assert(Graph.iso(copy, m2.cod))
+    assert(copy iso m2.cod)
   }
 
   it should "not apply reversibly if match is not derivable" in {
@@ -359,7 +391,7 @@ class RuleSpec extends FlatSpec with Matchers {
     val m = Arrow(lhs, mix, Map(1 -> 1), Map())
     val (comatch, _, _) = r(m)
     val (m2, _, _) = r.reversed()(comatch)
-    assert(!Graph.iso(copy, m2.cod))
+    assert(!copy.iso(m2.cod))
     /*
     // TODO: Should this be the case?
     // set edge

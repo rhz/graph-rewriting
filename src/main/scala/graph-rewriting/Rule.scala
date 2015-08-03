@@ -3,13 +3,12 @@ package graph_rewriting
 import implicits._
 
 trait Action[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]]
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]]
     extends Arrow[N,NL,E,EL,N,NL,E,EL,G] {
 
   // FIXME: Why is this not working?
   // require(!isInjective, "non-injective rule or action: " + this)
 
-  // implicit val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL]
   type Match = Arrow[N,NL,E,EL,N,NL,E,EL,G]
 
   def lhs: G[N,NL,E,EL]
@@ -36,20 +35,18 @@ trait Action[N,NL,E<:DiEdgeLike[N],EL,
 // --- Atomic actions ---
 
 sealed abstract class AtomicAction[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]]//(
-  // implicit val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]]
     extends Action[N,NL,E,EL,G]
 
 
 case class AddNode[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
   val e: Map[E,E],
   val nodeRhs: N)(
   implicit val newNode: G[N,NL,E,EL] => N)
-  // override val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
     extends AtomicAction[N,NL,E,EL,G] {
   val label: Option[NL] = rhs(nodeRhs).label
   def apply(m: Match, addedNodes: Map[N,N])
@@ -62,11 +59,12 @@ case class AddNode[N,NL,E<:DiEdgeLike[N],EL,
   }
   // TODO: How can we infer these type parameters?
   def reversed = DelNode(rhs,lhs,n.inverse,e.inverse,nodeRhs)
-  override def stringPrefix: String = "AddNode"
+  // override def stringPrefix: String = "AddNode"
+  override def toString = s"AddNode($nodeRhs)"
 }
 
 case class DelNode[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]]( //,G]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
@@ -84,17 +82,17 @@ case class DelNode[N,NL,E<:DiEdgeLike[N],EL,
     (transport(m),addedNodes,Set(n),edges.toSet)
   }
   def reversed = AddNode(rhs,lhs,n.inverse,e.inverse,nodeLhs)
-  override def stringPrefix: String = "DelNode"
+  // override def stringPrefix: String = "DelNode"
+  override def toString = s"DelNode($nodeLhs)"
 }
 
 case class SetNodeLabel[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
   val e: Map[E,E],
-  val nodeLhs: N)//(
-  // implicit override val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
+  val nodeLhs: N)
     extends AtomicAction[N,NL,E,EL,G] {
   val nodeRhs = n(nodeLhs)
   val label: Option[NL] = rhs(nodeRhs).label
@@ -108,19 +106,19 @@ case class SetNodeLabel[N,NL,E<:DiEdgeLike[N],EL,
     (transport(m), addedNodes, Set(n), Set())
   }
   def reversed = SetNodeLabel(rhs,lhs,n.inverse,e.inverse,nodeRhs)
-  override def stringPrefix: String = "SetNodeLabel"
+  // override def stringPrefix: String = "SetNodeLabel"
+  override def toString = s"SetNodeLabel(${lhs(nodeLhs).label})"
 }
 
 
 case class AddEdge[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
   val e: Map[E,E],
   val edgeRhs: E)(
   implicit val newEdge: (G[N,NL,E,EL],N,N) => E)
-  // override val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
     extends AtomicAction[N,NL,E,EL,G] {
   val ninv = n.inverse
   val sourceRhs: N = edgeRhs.source
@@ -144,18 +142,18 @@ case class AddEdge[N,NL,E<:DiEdgeLike[N],EL,
     (transport(m) + (edgeRhs, x),addedNodes,Set(s,t),Set(x))
   }
   def reversed = DelEdge(rhs,lhs,ninv,e.inverse,edgeRhs)
-  override def stringPrefix: String = "AddEdge"
+  // override def stringPrefix: String = "AddEdge"
+  override def toString = s"AddEdge($edgeRhs)"
 }
 
 case class DelEdge[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
   val e: Map[E,E],
   val edgeLhs: E)(
   implicit val newEdge: (G[N,NL,E,EL],N,N) => E)
-  // override val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
     extends AtomicAction[N,NL,E,EL,G] {
   def apply(m: Match, addedNodes: Map[N,N])
       : (Match, Map[N,N], Set[N], Set[E]) = {
@@ -164,17 +162,17 @@ case class DelEdge[N,NL,E<:DiEdgeLike[N],EL,
     (transport(m),addedNodes,Set(),Set(x))
   }
   def reversed = AddEdge(rhs,lhs,n.inverse,e.inverse,edgeLhs)
-  override def stringPrefix: String = "DelEdge"
+  // override def stringPrefix: String = "DelEdge"
+  override def toString = s"DelEdge($edgeLhs)"
 }
 
 case class SetEdgeLabel[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
   val e: Map[E,E],
-  val edgeLhs: E)// (
-  // implicit override val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
+  val edgeLhs: E)
     extends AtomicAction[N,NL,E,EL,G] {
   val edgeRhs: E = e(edgeLhs)
   val label: Option[EL] = rhs(edgeRhs).label
@@ -188,7 +186,8 @@ case class SetEdgeLabel[N,NL,E<:DiEdgeLike[N],EL,
     (transport(m), addedNodes, Set(), Set(x))
   }
   def reversed = SetEdgeLabel(rhs,lhs,n.inverse,e.inverse,edgeRhs)
-  override def stringPrefix: String = "SetEdgeLabel"
+  // override def stringPrefix: String = "SetEdgeLabel"
+  override def toString = s"SetEdgeLabel(${lhs(edgeLhs).label})"
 }
 
 
@@ -199,7 +198,7 @@ case class Rate(val name: String, val value: Double = 1.0) {
 }
 
 class Rule[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
   val lhs: G[N,NL,E,EL],
   val rhs: G[N,NL,E,EL],
   val n: Map[N,N],
@@ -207,7 +206,6 @@ class Rule[N,NL,E<:DiEdgeLike[N],EL,
   val rate: Rate)(
   implicit val newNode: G[N,NL,E,EL] => N,
            val newEdge: (G[N,NL,E,EL],N,N) => E)
-  // override val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
     extends Action[N,NL,E,EL,G] {
 
   val actions: Seq[Action[N,NL,E,EL,G]] = {
@@ -225,7 +223,7 @@ class Rule[N,NL,E<:DiEdgeLike[N],EL,
                    yield DelEdge(lhs, rhs, n, e, x)
     val setEdges = for ((x, y) <- e if lhs(x).label != rhs(y).label)
                    yield SetEdgeLabel(lhs, rhs, n, e, x)
-    addNodes.toSeq ++ delNodes ++ setNodes ++ addEdges ++ delEdges ++ setEdges
+    delEdges.toSeq ++ delNodes ++ addNodes ++ addEdges ++ setNodes ++ setEdges
   }
   def apply(m: Match, addedNodes: Map[N,N])
       : (Match, Map[N,N], Set[N], Set[E]) =
@@ -236,26 +234,31 @@ class Rule[N,NL,E<:DiEdgeLike[N],EL,
           (cm1 + cm2, an1 ++ an2, n1 ++ n2, e1 ++ e2)
         }
       })
-  def reversed() = Rule(rhs,lhs,n.inverse,e.inverse,Rate(rate.name + "_reversed"))(newNode,newEdge)
+  def reversed() = memoisedReversed
+  lazy val memoisedReversed = Rule(rhs,lhs,n.inverse,e.inverse,
+    Rate(rate.name + "_reversed"))
   def reversed(rate: Rate) = Rule(rhs,lhs,n.inverse,e.inverse,rate)
-  override def stringPrefix: String = "Rule"
+  // override def stringPrefix: String = "Rule"
+  override def toString = s"Rule(actions = $actions, rate = $rate)"
 }
 
 object Rule {
 
   // Creates a `Rule` with `n` and `e` given by all common nodes and edges in `lhs` and `rhs`.
   def apply[N,NL,E<:DiEdgeLike[N],EL,
-    G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     lhs: G[N,NL,E,EL], rhs: G[N,NL,E,EL], rate: Rate)(implicit
       newNode: G[N,NL,E,EL] => N,
       newEdge: (G[N,NL,E,EL],N,N) => E): Rule[N,NL,E,EL,G] = {
     val n = for (n <- lhs.nodes if rhs.nodes contains n) yield (n,n)
+    // FIXME: This is wrong because of edge ids, but it's ok
+    // to remove and then add edges instead of keeping them no?
     val e = for (e <- lhs.edges if rhs.edges contains e) yield (e,e)
     new Rule(lhs,rhs,n.toMap,e.toMap,rate)
   }
 
   def apply[N,NL,E<:DiEdgeLike[N],EL,
-    G[X,Y,Z<:DiEdgeLike[X],W] <: ConcreteDiGraph[X,Y,Z,W,G]](
+    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     lhs: G[N,NL,E,EL], rhs: G[N,NL,E,EL],
     n: Map[N,N], e: Map[E,E], rate: Rate)(implicit
       newNode: G[N,NL,E,EL] => N,

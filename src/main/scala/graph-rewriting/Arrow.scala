@@ -6,9 +6,7 @@ import implicits._
 abstract class Arrow[
   N1,NL1,E1<:DiEdgeLike[N1],EL1,
   N2,NL2,E2<:DiEdgeLike[N2],EL2,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] { //(implicit
-    // ev1: G[N1,NL1,E1,EL1] <:< Graph[N1,NL1,E1,EL1],
-    // ev2: G[N2,NL2,E2,EL2] <:< Graph[N2,NL2,E2,EL2]) {
+  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]] {
 
   def dom: G[N1,NL1,E1,EL1]
   def cod: G[N2,NL2,E2,EL2]
@@ -61,9 +59,7 @@ object Arrow {
     from: G[N1,NL1,E1,EL1],
     to: G[N2,NL2,E2,EL2],
     nodeMap: Map[N1,N2],
-    edgeMap: Map[E1,E2]) = //(implicit
-      // ev1: G[N1,NL1,E1,EL1] <:< Graph[N1,NL1,E1,EL1],
-      // ev2: G[N2,NL2,E2,EL2] <:< Graph[N2,NL2,E2,EL2]) =
+    edgeMap: Map[E1,E2]) =
     new Arrow[N1,NL1,E1,EL1,N2,NL2,E2,EL2,G] {
       def dom = from
       def cod = to
