@@ -511,11 +511,15 @@ object MarkedDiGraph {
   implicit def empty[N,NL,E<:DiEdgeLike[N],EL]() =
     new MarkedDiGraph[N,NL,E,EL]
 
-  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) = new {
+  class MarkedDiGraphConstructorWithNodes[N,NL](
+    nodes: Traversable[(N,Option[NL])]) {
     def apply[E<:DiEdgeLike[N],EL](edges: (E,Option[EL])*) =
-      const(n1 +: nodes,edges)
-    def apply() = const[N,NL,IdDiEdge[Int,N],String](n1 +: nodes,List())
+      const(nodes,edges)
+    def apply() = const[N,NL,IdDiEdge[Int,N],String](nodes,List())
   }
+
+  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) =
+    new MarkedDiGraphConstructorWithNodes[N,NL](n1 +: nodes)
 
   // TODO: This should be available for Graphs and DiGraphs as well,
   // it's pretty generic conceptually: from another type of graph

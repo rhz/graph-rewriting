@@ -345,15 +345,23 @@ object Graph {
 
   implicit def empty[N,NL,E<:EdgeLike[N],EL] = new Graph[N,NL,E,EL]
 
-  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) = new {
+  class GraphConstructorWithNodes[N,NL](
+    nodes: Traversable[(N,Option[NL])]) {
     def apply[E<:EdgeLike[N],EL](edges: (E,Option[EL])*) =
-      const(n1 +: nodes, edges)
-    def apply() = const[N,NL,IdDiEdge[Int,N],String](n1 +: nodes, List())
+      const(nodes, edges)
+    def apply() = const[N,NL,IdDiEdge[Int,N],String](nodes, List())
   }
+
+  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) =
+    new GraphConstructorWithNodes[N,NL](n1 +: nodes)
 
   class GraphConstructor[N,NL,E<:EdgeLike[N],EL] {
     def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*)
         : Graph[N,NL,E,EL] = Graph.const(nodes,edges)
+    def apply(nodes: Iterable[N], edges: Iterable[E])
+        : Graph[N,NL,E,EL] =
+      const[N,NL,E,EL](nodes zip Stream.continually(None),
+                       edges zip Stream.continually(None))
     def empty: Graph[N,NL,E,EL] = new Graph[N,NL,E,EL]
   }
 
@@ -1083,15 +1091,23 @@ object DiGraph {
 
   implicit def empty[N,NL,E<:DiEdgeLike[N],EL]() = new DiGraph[N,NL,E,EL]
 
-  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) = new {
+  class DiGraphConstructorWithNodes[N,NL](
+    nodes: Traversable[(N,Option[NL])]) {
     def apply[E<:DiEdgeLike[N],EL](edges: (E,Option[EL])*) =
-      const(n1 +: nodes, edges)
-    def apply() = const[N,NL,IdDiEdge[Int,N],String](n1 +: nodes, List())
+      const(nodes, edges)
+    def apply() = const[N,NL,IdDiEdge[Int,N],String](nodes, List())
   }
+
+  def apply[N,NL](n1: (N,Option[NL]), nodes: (N,Option[NL])*) =
+    new DiGraphConstructorWithNodes[N,NL](n1 +: nodes)
 
   class DiGraphConstructor[N,NL,E<:DiEdgeLike[N],EL]  {
     def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*)
         : DiGraph[N,NL,E,EL] = const(nodes,edges)
+    def apply(nodes: Iterable[N], edges: Iterable[E])
+        : DiGraph[N,NL,E,EL] =
+      const[N,NL,E,EL](nodes zip Stream.continually(None),
+                       edges zip Stream.continually(None))
     def empty: DiGraph[N,NL,E,EL] = new DiGraph[N,NL,E,EL]
   }
 
