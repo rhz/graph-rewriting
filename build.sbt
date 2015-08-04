@@ -18,7 +18,7 @@ val scalajs = false
 if (scalajs) {
   enablePlugins(ScalaJSPlugin);
   // ScalaTest hasn't been ported yet to Scala.js
-  // libraryDependencies += "org.scalatest" %%% "scalatest_2.11" % "2.2.4" % "test"
+  // libraryDependencies += "org.scalatest" %%% "scalatest_2.11" % "2.2.+" % "test"
 } else {
   libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.+" % "test"
 }
