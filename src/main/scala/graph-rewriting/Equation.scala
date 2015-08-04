@@ -478,17 +478,16 @@ case class ODE[N,NL,E<:DiEdgeLike[N],EL,
 // Naming of graphs
 // NOTE: It is assumed that a class extending GraphNaming will give
 // the same name to all graphs in an isomorphism class.
-abstract class GraphNaming[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]]//(
-  // implicit val ev: G[N,NL,E,EL] <:< Graph[N,NL,E,EL])
+abstract class GraphNaming[N, NL, E <: DiEdgeLike[N], EL,
+  G[X, Y, Z <: DiEdgeLike[X], W] <: BaseDiGraph[X, Y, Z, W]]
     extends (G[N,NL,E,EL] => String) {
   // def apply(g: G[N,NL,E,EL]): String
   def seq: Seq[(G[N,NL,E,EL],String)]
 }
-class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-  start: Int = 0)//(
-  //implicit override val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
+
+class IncrementalNaming[N, NL, E <: DiEdgeLike[N], EL,
+  G[X, Y, Z <: DiEdgeLike[X], W] <: BaseDiGraph[X, Y, Z, W]](
+  start: Int = 0)
     extends GraphNaming[N,NL,E,EL,G] {
 
   val cnt = Counter(start)
@@ -508,10 +507,10 @@ class IncrementalNaming[N,NL,E<:DiEdgeLike[N],EL,
 }
 
 
-class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
-  G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-  eqs: Traversable[Eq[N,NL,E,EL,G]]) { //(
-  // implicit val ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) {
+class ODEPrinter[N, NL, E <: DiEdgeLike[N], EL,
+  G[X, Y, Z <: DiEdgeLike[X], W] <: BaseDiGraph[X, Y, Z, W]{
+    type This = G[X, Y, Z, W]
+  }](eqs: Traversable[Eq[N,NL,E,EL,G]]) {
 
   // Split algebraic equations into substitutions and cancellations
   // A cancellation is a substitution by zero
@@ -586,10 +585,10 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
     lines foreach (println(_))
   }
 
-  // def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
-  //   g0: G[N,NL,E,EL]): Unit =
-  //   saveAsOctave(filename, 0.0, finalTime, numSteps,
-  //     g => Graph.arrows(g0, g).length)
+  def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+    g0: G[N,NL,E,EL]): Unit =
+    saveAsOctave(filename, 0.0, finalTime, numSteps,
+      g => g0.arrowsTo(g).length)
 
   def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
     init: G[N,NL,E,EL] => Double): Unit =
@@ -599,10 +598,10 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
     init: Traversable[Double]): Unit =
     saveAsOctave(filename, 0.0, finalTime, numSteps, init)
 
-  // def saveAsOctave(filename: String, startTime: Double,
-  //   finalTime: Double, numSteps: Int, g0: G[N,NL,E,EL]): Unit =
-  //   saveAsOctave(filename, startTime, finalTime, numSteps,
-  //     g => Graph.arrows(g0, g).length)
+  def saveAsOctave(filename: String, startTime: Double,
+    finalTime: Double, numSteps: Int, g0: G[N,NL,E,EL]): Unit =
+    saveAsOctave(filename, startTime, finalTime, numSteps,
+      g => g0.arrowsTo(g).length)
 
   def saveAsOctave(filename: String, startTime: Double,
     finalTime: Double, numSteps: Int,
@@ -667,10 +666,9 @@ class ODEPrinter[N,NL,E<:DiEdgeLike[N],EL,
 }
 
 object ODEPrinter {
-  def apply[N,NL,E<:DiEdgeLike[N],EL,
-    G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-    eqs: Traversable[Eq[N,NL,E,EL,G]]) = //(implicit
-      // ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
-    new ODEPrinter(eqs)
+  def apply[N, NL, E <: DiEdgeLike[N], EL,
+    G[X, Y, Z <: DiEdgeLike[X], W] <: BaseDiGraph[X, Y, Z, W]{
+      type This = G[X, Y, Z, W]
+    }](eqs: Traversable[Eq[N,NL,E,EL,G]]) = new ODEPrinter(eqs)
 }
 
