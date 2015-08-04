@@ -13,23 +13,18 @@ import scala.language.higherKinds  // TODO: necessary?
 
 import utils._
 
-abstract class BaseMarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
-    extends BaseDiGraph[N,NL,E,EL] {
+abstract class BaseMarkedDiGraph[N, NL, E <: DiEdgeLike[N], EL]
+    extends BaseDiGraph[N, NL, E, EL] {
 
-  // type G[Y,Z<:E,W] <: BaseMarkedDiGraph[N,Y,Z,W]
+  type This <: BaseMarkedDiGraph[N, NL, E, EL]
   override def stringPrefix = "MarkedDiGraph"
 
-  // FIXME: This is a hack to work around the issue with type G that can't
-  // be given an upper bound here or it won't mix with ConcreteDiGraph
-  override def copy =
-    super.copy match {
-      case g: BaseMarkedDiGraph[N,NL,E,EL] => {
-        for (n <- inMarks) g(n).inMark
-        for (n <- outMarks) g(n).outMark
-        g.asInstanceOf[This] // since copy returned a BaseMarkedDiGraph, this is safe
-      }
-      case g => g
-    }
+  override def copy = {
+    val g = super.copy
+    for (n <- inMarks) g(n).inMark()
+    for (n <- outMarks) g(n).outMark()
+    g
+  }
 
   val inMarks = mutable.Set.empty[N]
   val outMarks = mutable.Set.empty[N]
@@ -38,12 +33,12 @@ abstract class BaseMarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
     def marked: Boolean = (inMarks contains n) || (outMarks contains n)
     def inMarked: Boolean = inMarks contains n
     def outMarked: Boolean = outMarks contains n
-    def mark = { inMarks += n; outMarks += n; this }
-    def unmark = { inMarks -= n; outMarks -= n; this }
-    def inMark = { inMarks += n; this }
-    def inUnmark = { inMarks -= n; this }
-    def outMark = { outMarks += n; this }
-    def outUnmark = { outMarks -= n; this }
+    def mark() = { inMarks += n; outMarks += n; this }
+    def unmark() = { inMarks -= n; outMarks -= n; this }
+    def inMark() = { inMarks += n; this }
+    def inUnmark() = { inMarks -= n; this }
+    def outMark() = { outMarks += n; this }
+    def outUnmark() = { outMarks -= n; this }
   }
 
   override def apply(n: N): MarkedNode =
@@ -483,11 +478,10 @@ abstract class BaseMarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
 //     extends BaseMarkedDiGraph[N,NL,E,EL]
 //        with ConcreteDiGraph[N,NL,E,EL,H]
 
-class MarkedDiGraph[N,NL,E<:DiEdgeLike[N],EL]
-    extends BaseMarkedDiGraph[N,NL,E,EL] // {
-       with ConcreteDiGraph[N,NL,E,EL,MarkedDiGraph] {
-  // type G[Y,Z<:E,W] = MarkedDiGraph[N,Y,Z,W]
-  def empty = new MarkedDiGraph[N,NL,E,EL]
+class MarkedDiGraph[N, NL, E <: DiEdgeLike[N], EL]
+    extends BaseMarkedDiGraph[N, NL, E, EL] {
+  type This = MarkedDiGraph[N, NL, E, EL]
+  def empty = new MarkedDiGraph[N, NL, E, EL]
   def asThis = this
 }
 
