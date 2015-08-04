@@ -66,6 +66,8 @@ abstract class BaseGraph[N,NL,E<:EdgeLike[N],EL] {
       adjacency(n) withFilter (_._2 contains m) map (_._1)
     def degree: Int = adjacency(n).size
     def neighbours: Set[N] = adjacency(n).values.flatten.toSet
+    // Q: Should I have this or just use adjacency directly?
+    // def edgesAndNeighbours: Map[E,Set[N]] = adjacency(n)
   }
 
   class Edge(e: E) {
@@ -349,11 +351,14 @@ object Graph {
     def apply() = const[N,NL,IdDiEdge[Int,N],String](n1 +: nodes, List())
   }
 
-  def withType[N,NL,E<:EdgeLike[N],EL] = new {
-    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
-      const(nodes, edges)
-    def empty = new Graph[N,NL,E,EL]
+  class GraphConstructor[N,NL,E<:EdgeLike[N],EL] {
+    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*)
+        : Graph[N,NL,E,EL] = Graph.const(nodes,edges)
+    def empty: Graph[N,NL,E,EL] = new Graph[N,NL,E,EL]
   }
+
+  def withType[N,NL,E<:EdgeLike[N],EL] =
+    new GraphConstructor[N,NL,E,EL]
 }
 
 abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
@@ -1084,16 +1089,19 @@ object DiGraph {
     def apply() = const[N,NL,IdDiEdge[Int,N],String](n1 +: nodes, List())
   }
 
-  def withType[N,NL,E<:DiEdgeLike[N],EL] = new {
-    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
-      const(nodes, edges)
-    def empty = new Graph[N,NL,E,EL]
+  class DiGraphConstructor[N,NL,E<:DiEdgeLike[N],EL]  {
+    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*)
+        : DiGraph[N,NL,E,EL] = const(nodes,edges)
+    def empty: DiGraph[N,NL,E,EL] = new DiGraph[N,NL,E,EL]
   }
+
+  def withType[N,NL,E<:DiEdgeLike[N],EL] =
+    new DiGraphConstructor[N,NL,E,EL]
 
 
   // -- Isomorphisms of multiple directed graphs --
 
-  // QUESTION: Is the companion object really a good place to put this function?
+  // Q: Is the companion object really a good place to put this function?
   def isos[N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     gs: Traversable[G[N,NL,E,EL]],

@@ -533,13 +533,17 @@ object MarkedDiGraph {
     }
   }
 
-  def withType[N,NL,E<:DiEdgeLike[N],EL] = new {
-    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*) =
-      const(nodes,edges)
-    def apply(nodes: Iterable[N], edges: Iterable[E]) =
+  class MarkedDiGraphConstructor[N,NL,E<:DiEdgeLike[N],EL] {
+    def apply(nodes: (N,Option[NL])*)(edges: (E,Option[EL])*)
+        : MarkedDiGraph[N,NL,E,EL] = const(nodes,edges)
+    def apply(nodes: Iterable[N], edges: Iterable[E])
+        : MarkedDiGraph[N,NL,E,EL] =
       const[N,NL,E,EL](nodes zip Stream.continually(None),
                        edges zip Stream.continually(None))
-    def empty = new Graph[N,NL,E,EL]
+    def empty: MarkedDiGraph[N,NL,E,EL] = new MarkedDiGraph[N,NL,E,EL]
   }
+
+  def withType[N,NL,E<:DiEdgeLike[N],EL] =
+    new MarkedDiGraphConstructor[N,NL,E,EL]
 }
 
