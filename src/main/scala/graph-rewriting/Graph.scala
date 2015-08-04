@@ -391,9 +391,199 @@ abstract class BaseDiGraph[N,NL,E<:DiEdgeLike[N],EL]
   // --- Arrows ---
 
   /** Returns all arrows (i.e. the hom-set) from `this` to `that`. */
-  // def arrowsTo[H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-  //   that: H[N,NL,E,EL])(implicit ev: G[NL,E,EL] <:< H[N,NL,E,EL])
-  //     : Vector[Arrow[N,NL,E,EL,N,NL,E,EL,H]] = ???
+  def arrowsTo[N2,E2<:DiEdgeLike[N2],
+    H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
+    that: H[N2,NL,E2,EL])(implicit ev: This <:< H[N,NL,E,EL])
+      : Vector[Arrow[N,NL,E,EL,N2,NL,E2,EL,H]] = {
+
+    /** Tries to construct a total `Arrow` from a partial one.
+      *
+      * @param queue nodes that should be visited next, in order.
+      * @param nodeMap partial injection on nodes that we are extending.
+      * @param edgeMap partial injection on edges that we are extending.
+      * @param seenNodes nodes seen in the image of the injection.
+      * @param seenEdges nodes seen in the image of the injection.
+      */
+    def extendArrow(queue: Seq[(N,N2)], fn: Map[N,N2], fe: Map[E,E2],
+      ns: Set[N2], es: Set[E2]): Vector[Arrow[N,NL,E,EL,N2,NL,E2,EL,H]] =
+      // If there's nothing else to visit, we stop and return the injection we found
+      if (queue.isEmpty) Vector(Arrow(this.asThis,that,fn,fe))
+      else {
+        val (u,v) = queue.head
+        val (uout,uin) = this.adjacency(u).toVector.partition({
+          case (e,ns) => e.source == u })
+        val (vout,vin) = that.adjacency(v).toVector.partition({
+          case (e,ns) => e.source == v })
+        // println(s"u = $u, v = $v")
+
+        // val uin = adjacency(u).toVector groupBy (this(_._1).label)
+        // val uout = adjacency(u).toVector groupBy (this(_._1).label)
+        // val uin = this(u).incoming.toVector groupBy (this(_).label)
+        // val uout = this(u).outgoing.toVector groupBy (this(_).label)
+        // val vin = that(v).incoming.toVector groupBy (that(_).label)
+        // val vout = that(v).outgoing.toVector groupBy (that(_).label)
+
+        if ((uout.size > vout.size) || (uin.size > vin.size)) Vector()
+        else {
+
+          val uinByLabel = uin groupBy { case (e,_) => this(e).label }
+          val vinByLabel = vin groupBy { case (e,_) => that(e).label }
+          val uoutByLabel = uout groupBy { case (e,_) => this(e).label }
+          val voutByLabel = vout groupBy { case (e,_) => that(e).label }
+
+          // if the nodes have the same degree and the sets of labels
+          // are equal then there's a posibility that u matches v
+          if (uinByLabel.exists({ case (label,edges) =>
+                !vinByLabel.contains(label) ||
+                (edges.size > vinByLabel(label).size) }) &&
+              uoutByLabel.exists({ case (label,edges) =>
+                !voutByLabel.contains(label) ||
+                (edges.size > voutByLabel(label).size) })) Vector()
+          else {
+            // sort incoming and outgoing edges by the number of
+            // combinations that we have to try to reject
+            val uinSorted = uinByLabel.toVector.sortBy(_._2.size)
+            val uoutSorted = uoutByLabel.toVector.sortBy(_._2.size)
+
+            def matchingEdges(xs: Vector[(Option[EL],Vector[(E,Set[N])])],
+              m: Map[Option[EL],Vector[(E2,Set[N2])]])
+                : Vector[Vector[(E,N,E2,N2)]] =
+              for ((label,edges) <- xs; (ue,uns) <- edges)
+              yield (for {
+                (ve,vns) <- m(label)
+                un = uns.head
+                vn = vns.head
+                if this(un) matches that(vn)
+                // Q: Should I return `uns` and `vns` in the result
+                //    instead of `un` and `vn`?
+              } yield (ue,un,ve,vn))
+
+            // collect edges around u and v that match
+            val edges = matchingEdges(uinSorted,vinByLabel) ++
+                        matchingEdges(uoutSorted,voutByLabel)
+            // println(s"edges = $edges")
+
+            // if one of the edges doesn't have a match, then we stop
+            if (edges exists (_.isEmpty)) Vector()
+            else {
+              val indices = Array.fill[Int](edges.length)(0)
+
+              def updateIndices = {
+                def loop(i: Int): Boolean = {
+                  // if (!indices.contains(i))
+                  //   println(s"indices = ${indices.toSeq}, i = $i")
+                  indices(i) += 1
+                  if (indices(i) >= edges(i).length) {
+                    if ((i+1) >= edges.length) true
+                    else {
+                      indices(i) = 0
+                      loop(i+1)
+                    }
+                  } else false
+                }
+                loop(0)
+              }
+
+              var finished = false
+              type A = Arrow[N,NL,E,EL,N2,NL,E2,EL,H]
+              var arrows: mutable.Builder[A,Vector[A]] = Vector.newBuilder
+              while (!finished) {
+                val nbs = (indices,edges).zipped map ((i,xs) => xs(i))
+                var mfn = fn
+                var mfe = fe
+                var mes = es
+                var mns = ns
+                var q = queue.tail
+                var failed = false
+                for ((ue,un,ve,vn) <- nbs if failed == false) {
+                  if (mfn contains un) {
+                    if (mfn(un) == vn) {
+                      if (mfe contains ue) {
+                        if (mfe(ue) == ve) {
+                          // un and ue are in the preimage...
+                          // just skip this, it's the edge we are
+                          // coming from
+                          // println(s"we are coming from ($ue, $ve)")
+                        } else {
+                          // println(s"fail 1: mfe($ue) != $ve")
+                          failed = true
+                        }
+                      } else {
+                        // un is in the preimage but not ue
+                        // Check that ve is not in the image
+                        if (mes contains ve) {
+                          // println(s"fail 2: mes doesn't contain $ve")
+                          failed = true
+                        } else {
+                          // println(s"adding ($ue, $ve)")
+                          mfe += (ue -> ve)
+                          mes += ve
+                        }
+                      }
+                    } else {
+                      // println(s"fail 3: mfn($un) != $vn")
+                      failed = true
+                    }
+                  } else {
+                    if (mfe contains ue) {
+                      // println(s"fail 4: mfe doesn't contain $ue")
+                      failed = true
+                    } else {
+                      // un and ue are not in the preimage
+                      // Check that vn and ve are not in the image
+                      if (mns.contains(vn) || mes.contains(ve)) {
+                        // println(s"fail 5: $un and $ue are not in the preimage, but $vn or $ve are")
+                        failed = true
+                      } else {
+                        // println(s"adding ($ue, $ve) and ($un, $vn)")
+                        mfn += (un -> vn)
+                        mfe += (ue -> ve)
+                        mes += ve
+                        mns += vn
+                        q = q :+ (un -> vn)
+                      }
+                    }
+                  }
+                }
+                if (failed == false)
+                  arrows ++= extendArrow(q,mfn,mfe,mns,mes)
+                if (updateIndices)
+                  finished = true
+              }
+              arrows.result
+            }
+          }
+        }
+      }
+
+    if (this.nodes.size == 1 && that.nodes.size == 1) {
+      if (this(this.nodes.head).label == that(that.nodes.head).label)
+        // FIXME: What if `{this,that}.nodes.head` has self-loops?
+        Vector(Arrow(this.asThis,that,
+          Map(this.nodes.head -> that.nodes.head),Map.empty[E,E2]))
+      else Vector()
+    } else {
+      // map node labels to nodes
+      val domNodesByLabel = this.nodes groupBy (this(_).label)
+      val codNodesByLabel = that.nodes groupBy (that(_).label)
+
+      // the distribution of labels must be the same
+      if (domNodesByLabel exists { case (label,nodes) =>
+            !codNodesByLabel.contains(label) ||
+            (nodes.size > codNodesByLabel(label).size) }) Vector()
+      else {
+        // look for the least populated label in the codomain
+        val (label,codNodes) = codNodesByLabel minBy (_._2.size)
+
+        // get an anchor in the domain for that label
+        val anchor = domNodesByLabel(label).head
+
+        codNodes.toVector flatMap { c: N2 =>
+          extendArrow(Vector(anchor -> c), Map(anchor -> c),
+            Map.empty, Set.empty, Set.empty) }
+      }
+    }
+  }
 
 
   // --- Isomorphisms ---

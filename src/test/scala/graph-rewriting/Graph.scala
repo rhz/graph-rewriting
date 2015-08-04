@@ -515,5 +515,18 @@ class GraphSpec extends FlatSpec with Matchers {
     val unions = g3.unions[N2,E2,N2,E2,DiGraph](g3.copy)
     unions.length shouldBe 8
   }
+
+  it should "compute the set of isomorphic subgraphs" in {
+    val xy = "x"~~>"y"
+    val xz = "x"~~>"z"
+    val xw = "x"~~>"w"
+    val yz = "y"~~>"z"
+    val zw = "z"~~>"w"
+    val wy = "w"~~>"y"
+    val g1 = G("x","y","z")(xy,xz,yz)
+    val g2 = G("x","y","z","w")(xy,xz,xw,yz,zw,wy)
+    val arrows = g1.arrowsTo[N2,E2,DiGraph](g2)
+    arrows.length shouldBe 3
+  }
 }
 
