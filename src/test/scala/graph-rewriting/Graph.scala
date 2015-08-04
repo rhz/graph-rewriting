@@ -1,7 +1,7 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
 import org.scalatest.{FlatSpec, Matchers}
-import implicits._
 
 class GraphSpec extends FlatSpec with Matchers {
 

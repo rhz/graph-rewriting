@@ -1,6 +1,6 @@
+package uk.ac.ed.inf
 package graph_rewriting
 
-import implicits._
 import moments._
 
 object PreferentialAttachment {
