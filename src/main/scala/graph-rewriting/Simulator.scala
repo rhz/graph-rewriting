@@ -48,7 +48,7 @@ class Simulator[N,NL,E<:DiEdgeLike[N],EL] {
         (r.rate.value * matches(r.lhs).length)
 
       // Build the propensity tree
-      val tree = DistTree(propensities, rand)
+      val tree = DistTree(propensities map (_.toDouble), rand)
       val totalProp = tree.totalWeight
 
       if (totalProp == 0 || totalProp.isNaN)

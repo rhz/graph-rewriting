@@ -7,7 +7,7 @@ object utils {
   /** Pick an element of each sequence non-deterministically. */
   def cross[A](xss: Seq[Seq[A]], seen: Set[A] = Set[A]())
       : Seq[Seq[A]] = xss match {
-    case Seq() => List(List())
+    case Seq() => Vector(Vector())
     case xs +: xss =>
       for { y <- xs if !seen(y);
             yss <- cross(xss, seen + y)

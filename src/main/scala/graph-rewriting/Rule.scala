@@ -194,7 +194,7 @@ case class SetEdgeLabel[N,NL,E<:DiEdgeLike[N],EL,
 
 // --- Rules ---
 
-case class Rate(val name: String, val value: Double = 1.0) {
+case class Rate(val name: String, val value: BigDecimal = 1.0) {
   override def toString = name
 }
 
