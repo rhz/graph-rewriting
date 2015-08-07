@@ -62,8 +62,10 @@ abstract class BaseDiGraph[N, NL, E <: DiEdgeLike[N], EL]
 
   // --- Arrows ---
 
-  /** Returns all arrows (i.e. the hom-set) from `this` to `that`. */
-  def arrowsTo[N2,E2<:DiEdgeLike[N2],
+  /** Returns all arrows (i.e. the hom-set) from `this` to `that`,
+    * assuming `this` and `that` are connected.
+    */
+  def connectedArrowsTo[N2,E2<:DiEdgeLike[N2],
     H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
     that: H[N2,NL,E2,EL])(implicit ev: This <:< H[N,NL,E,EL])
       : Vector[Arrow[N,NL,E,EL,N2,NL,E2,EL,H]] = {
@@ -95,7 +97,10 @@ abstract class BaseDiGraph[N, NL, E <: DiEdgeLike[N], EL]
         // val vin = that(v).incoming.toVector groupBy (that(_).label)
         // val vout = that(v).outgoing.toVector groupBy (that(_).label)
 
-        if ((uout.size > vout.size) || (uin.size > vin.size)) Vector()
+        if ((uout.size == 0) && (uin.size == 0))
+          extendArrow(queue.tail,fn,fe,ns,es)
+        else if ((uout.size > vout.size) || (uin.size > vin.size))
+          Vector()
         else {
 
           val uinByLabel = uin groupBy { case (e,_) => this(e).label }
@@ -228,33 +233,44 @@ abstract class BaseDiGraph[N, NL, E <: DiEdgeLike[N], EL]
         }
       }
 
-    if (this.nodes.size == 1 && that.nodes.size == 1) {
-      if (this(this.nodes.head).label == that(that.nodes.head).label)
-        // FIXME: What if `{this,that}.nodes.head` has self-loops?
-        Vector(Arrow(this.asThis,that,
-          Map(this.nodes.head -> that.nodes.head),Map.empty[E,E2]))
-      else Vector()
-    } else {
-      // map node labels to nodes
-      val domNodesByLabel = this.nodes groupBy (this(_).label)
-      val codNodesByLabel = that.nodes groupBy (that(_).label)
+    // map node labels to nodes
+    val domNodesByLabel = this.nodes groupBy (this(_).label)
+    val codNodesByLabel = that.nodes groupBy (that(_).label)
 
-      // the distribution of labels must be the same
-      if (domNodesByLabel exists { case (label,nodes) =>
-            !codNodesByLabel.contains(label) ||
-            (nodes.size > codNodesByLabel(label).size) }) Vector()
-      else {
-        // look for the least populated label in the codomain
-        val (label,codNodes) = codNodesByLabel minBy (_._2.size)
+    // the distribution of labels must be the same
+    if (domNodesByLabel exists { case (label,nodes) =>
+      !codNodesByLabel.contains(label) ||
+      (nodes.size > codNodesByLabel(label).size) }) Vector()
+    else {
+      // look for the least populated label in the codomain
+      val (label,codNodes) = codNodesByLabel minBy (_._2.size)
 
-        // get an anchor in the domain for that label
-        val anchor = domNodesByLabel(label).head
+      // get an anchor in the domain for that label
+      val anchor = domNodesByLabel(label).head
 
-        codNodes.toVector flatMap { c: N2 =>
-          extendArrow(Vector(anchor -> c), Map(anchor -> c),
-            Map.empty, Set.empty, Set.empty) }
-      }
+      codNodes.toVector flatMap { c: N2 =>
+        extendArrow(Vector(anchor -> c), Map(anchor -> c),
+          Map.empty, Set.empty, Set.empty) }
+    // }
     }
+  }
+
+  /** Returns all arrows (i.e. the hom-set) from `this` to `that`. */
+  def arrowsTo[N2,E2<:DiEdgeLike[N2],
+    H[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W] {
+      type This = H[X,Y,Z,W]
+    }](that: H[N2,NL,E2,EL])(implicit ev: This <:< H[N,NL,E,EL])
+      : Vector[Arrow[N,NL,E,EL,N2,NL,E2,EL,H]] = {
+    val (gs,hs) = (this.components,that.components)
+    val arrows = (for (g <- gs) yield
+      hs.flatMap(ev(g).connectedArrowsTo[N2,E2,H](_)).toSeq).toSeq
+    for {
+      xs <- cross(arrows).toVector
+      (fn,fe) = xs.foldLeft( (Map.empty[N,N2], Map.empty[E,E2]) )({
+        case ((fn,fe), arrow) => (fn ++ arrow.n, fe ++ arrow.e) })
+      f = Arrow[N,NL,E,EL,N2,NL,E2,EL,H](this.asThis, that, fn, fe)
+      if f.isInjective
+    } yield f
   }
 
 

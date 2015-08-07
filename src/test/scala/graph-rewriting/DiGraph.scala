@@ -3,7 +3,7 @@ package graph_rewriting
 
 import org.scalatest.{FlatSpec, Matchers}
 
-class GraphSpec extends FlatSpec with Matchers {
+class DiGraphSpec extends FlatSpec with Matchers {
 
   type N1 = Int
   type E1 = DiEdge[N1]
@@ -525,8 +525,11 @@ class GraphSpec extends FlatSpec with Matchers {
     val wy = "w"~~>"y"
     val g1 = G("x","y","z")(xy,xz,yz)
     val g2 = G("x","y","z","w")(xy,xz,xw,yz,zw,wy)
-    val arrows = g1.arrowsTo[N2,E2,DiGraph](g2)
-    arrows.length shouldBe 3
+    g1.arrowsTo(g2).size shouldBe 3
+
+    val g3 = G("x","y")()
+    val g4 = G("x","y","z")(xz)
+    g3.arrowsTo(g4).size shouldBe 6
   }
 }
 
