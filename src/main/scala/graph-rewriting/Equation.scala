@@ -157,8 +157,7 @@ case class RatePn(terms: Vector[RateMn]) {
   }
   def * [N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-    p: Pn[N,NL,E,EL,G]) // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL])
-      : Pn[N,NL,E,EL,G] = p map (_ * this)
+    p: Pn[N,NL,E,EL,G]): Pn[N,NL,E,EL,G] = p map (_ * this)
   // addition and substraction
   def + (k: Rate) = RatePn(terms :+  RateMn(k))
   def - (k: Rate) = RatePn(terms :+ -RateMn(k))
@@ -336,7 +335,8 @@ object Mn {
     new Mn[N,NL,E,EL,G](rp, numer.toVector, denom.toVector)
   def unapply[N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-    m: Mn[N,NL,E,EL,G]) = // (implicit ev: G[N,NL,E,EL] <:< BaseDiGraph[N,NL,E,EL]) =
+    m: Mn[N,NL,E,EL,G]): Option[(RatePn,
+      Vector[G[N,NL,E,EL]], Vector[G[N,NL,E,EL]])] =
     Some(m.coef, m.numer, m.denom)
 
   // TODO: Pair approximation
@@ -585,26 +585,41 @@ class ODEPrinter[N, NL, E <: DiEdgeLike[N], EL,
     lines foreach (println(_))
   }
 
-  def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+  def saveAsOctave(
+    filename: String,
+    finalTime: Double,
+    numSteps: Int,
     g0: G[N,NL,E,EL]): Unit =
-    saveAsOctave(filename, 0.0, finalTime, numSteps,
-      g => g0.arrowsTo(g).length)
+    saveAsOctave(filename, 0.0, finalTime, numSteps, g0)
 
-  def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+  def saveAsOctave(
+    filename: String,
+    finalTime: Double,
+    numSteps: Int,
     init: G[N,NL,E,EL] => Double): Unit =
     saveAsOctave(filename, 0.0, finalTime, numSteps, init)
 
-  def saveAsOctave(filename: String, finalTime: Double, numSteps: Int,
+  def saveAsOctave(
+    filename: String,
+    finalTime: Double,
+    numSteps: Int,
     init: Traversable[Double]): Unit =
     saveAsOctave(filename, 0.0, finalTime, numSteps, init)
 
-  def saveAsOctave(filename: String, startTime: Double,
-    finalTime: Double, numSteps: Int, g0: G[N,NL,E,EL]): Unit =
+  def saveAsOctave(
+    filename: String,
+    startTime: Double,
+    finalTime: Double,
+    numSteps: Int,
+    g0: G[N,NL,E,EL]): Unit =
     saveAsOctave(filename, startTime, finalTime, numSteps,
-      g => g0.arrowsTo(g).length)
+      (g: G[N,NL,E,EL]) => g0.arrowsTo(g).size.toDouble)
 
-  def saveAsOctave(filename: String, startTime: Double,
-    finalTime: Double, numSteps: Int,
+  def saveAsOctave(
+    filename: String,
+    startTime: Double,
+    finalTime: Double,
+    numSteps: Int,
     init: G[N,NL,E,EL] => Double): Unit =
     saveAsOctave(filename, startTime, finalTime, numSteps,
       for (ODE(g,_) <- simplify) yield init(g))
@@ -614,9 +629,35 @@ class ODEPrinter[N, NL, E <: DiEdgeLike[N], EL,
     startTime: Double,
     finalTime: Double,
     numSteps: Int,
+    init: Traversable[Double]): Unit =
+    saveAsOctave(new java.io.PrintWriter(filename),
+      startTime, finalTime, numSteps, init)
+
+  def saveAsOctave(
+    out: java.io.PrintWriter,
+    startTime: Double,
+    finalTime: Double,
+    numSteps: Int,
+    g0: G[N,NL,E,EL]): Unit =
+    saveAsOctave(out, startTime, finalTime, numSteps,
+      (g: G[N,NL,E,EL]) => g0.arrowsTo(g).size.toDouble)
+
+  def saveAsOctave(
+    out: java.io.PrintWriter,
+    startTime: Double,
+    finalTime: Double,
+    numSteps: Int,
+    init: G[N,NL,E,EL] => Double): Unit =
+    saveAsOctave(out, startTime, finalTime, numSteps,
+      for (ODE(g,_) <- simplify) yield init(g))
+
+  def saveAsOctave(
+    out: java.io.PrintWriter,
+    startTime: Double,
+    finalTime: Double,
+    numSteps: Int,
     init: Traversable[Double])
       : Unit = {
-    val out = new java.io.PrintWriter(filename)
     val odes = simplify.toSeq // TODO: do we really need Seq to have zipWithIndex?
     out.println("# Associated graph observables:")
     val index = (for ((ODE(g, _), i) <- odes.zipWithIndex) yield
