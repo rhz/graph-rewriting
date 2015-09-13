@@ -69,15 +69,16 @@ Have a look at [VoterModel.scala](https://github.com/rhz/graph-rewriting/blob/ma
 Papers
 ------
 
-- "[Approximations for stochastic graph rewriting](http://www.pps.univ-paris-diderot.fr/~danos/pdf/icfem.pdf)" (ICFEM, 2014). Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki.
+- "[Approximations for stochastic graph rewriting](http://www.pps.univ-paris-diderot.fr/~danos/pdf/icfem.pdf)". Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki. ICFEM, 2014.
+- "[Moment Semantics for Reversible Rule-Based Systems](http://infoscience.epfl.ch/record/210228/files/momsem_1.pdf)". Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki. Reversible Computation, 2015.
+- "[Computing approximations for graph transformation systems](http://webconf.inrialpes.fr/wp-content/uploads/sites/9/2015/06/memo2015-preproc.pdf#page=37)". Vincent Danos, Tobias Heindel, Ricardo Honorato-Zimmer, Sandro Stucki. MeMo 2015, 2015.
 
 Roadmap
 -------
 
 1. Pair approximation and approximate master equation transformers
 3. LaTeX and DOT output
-2. Module for [mois](https://github.com/edinburgh-rbm/mois/)
-4. Simulation
+3. Simulation
 
 License
 -------
