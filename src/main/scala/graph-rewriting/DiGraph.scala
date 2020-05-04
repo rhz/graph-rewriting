@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import scala.collection.mutable
@@ -763,7 +763,8 @@ object DiGraph {
     g
   }
 
-  implicit def empty[N,NL,E<:DiEdgeLike[N],EL]() = new DiGraph[N,NL,E,EL]
+  implicit def empty[N,NL,E<:DiEdgeLike[N],EL]() =
+    new DiGraph[N,NL,E,EL]
 
   class DiGraphConstructorWithNodes[N,NL](
     nodes: Traversable[(N,Option[NL])]) {
@@ -792,36 +793,58 @@ object DiGraph {
 
   // -- Isomorphisms of multiple directed graphs --
 
-  // Q: Is the companion object really a good place to put this function?
+  // Q: Is the companion object really a good place
+  //    in which to put this function?
   def isos[N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](
-    gs: Traversable[G[N,NL,E,EL]],
-    hs: Traversable[G[N,NL,E,EL]],
-    isoFn: (G[N,NL,E,EL],G[N,NL,E,EL]) => Boolean): Boolean =
+      gs: Traversable[G[N,NL,E,EL]],
+      hs: Traversable[G[N,NL,E,EL]],
+      isoFn: (G[N,NL,E,EL], G[N,NL,E,EL]) => Boolean): Boolean = {
+    type Gr = G[N,NL,E,EL]
+    type T = Traversable[G[N,NL,E,EL]]
     if (gs.size != hs.size) false
     else {
       // TODO: Better name than xsBySize?
-      val gsBySize = gs groupBy (_.nodes.size)
-      val hsBySize = hs groupBy (_.nodes.size)
+      val gsBySize: Map[Int,T] = gs groupBy (_.nodes.size)
+      val hsBySize: Map[Int,T] = hs groupBy (_.nodes.size)
       if (gsBySize.keySet != hsBySize.keySet) false
       else {
         var ok = true
-        for ((n, gsn) <- gsBySize if ok) { // gsn are the graphs of (node set) size n
-          val hsn = hsBySize(n)
+        for ((n: Int, gsn: T) <- gsBySize if ok) {
+          // gsn are the graphs of (node set) size n
+          val hsn: T = hsBySize(n)
           if (gsn.size != hsn.size) ok = false
           else {
             // TODO: Better name than xsnBySize?
-            val gsnBySize = gsn groupBy (_.edges.size)
-            val hsnBySize = hsn groupBy (_.edges.size)
+            val gsnBySize: Map[Int,T] = gsn groupBy (_.edges.size)
+            val hsnBySize: Map[Int,T] = hsn groupBy (_.edges.size)
             if (gsnBySize.keySet != hsnBySize.keySet) ok = false
-            else for ((m,gsnm) <- gsnBySize if ok) {
-              val hsnm = hsnBySize(m).to[mutable.ArrayBuffer]
+            else for ((m: Int, gsnm: T) <- gsnBySize if ok) {
+              // xsnm are the graphs with n nodes and m edges
+              // val hsnm: mutable.ArrayBuffer[G[N,NL,E,EL]] =
+              //   hsnBySize(m).to(mutable.ArrayBuffer)
+              val hsnm: Array[Option[Gr]] =
+                hsnBySize(m).map(h => Some(h)).toArray
               if (gsnm.size != hsnm.size) ok = false
-              else for (g <- gsnm if ok) {
-                hsnm find (isoFn(g,_)) match {
-                  case Some(h) => hsnm -= h
-                  case None => ok = false
+              else for (g <- gsnm if ok) { // g: Gr
+                val gIso = (hopt: Option[Gr]) => hopt match {
+                  case Some(h) => isoFn(g, h)
+                  case None => false
                 }
+                // find a graph in hsnm that is isomorphic to g
+                hsnm indexWhere gIso match {
+                  case -1 => ok = false
+                  // if there is a graph that is isomorphic
+                  // then remove the graph from hsnm so that
+                  // it can't be used again to match a different
+                  // graph in gsnm. then proceed with the next
+                  // graph g in gsnm.
+                  case i => hsnm(i) = None
+                }
+                // hsnm find (isoFn(g, _)) match {
+                //   case Some(h) => hsnm -= h
+                //   case None => ok = false
+                // }
               }
             }
           }
@@ -829,6 +852,7 @@ object DiGraph {
         ok
       }
     }
+  }
 
   def isos[N,NL,E<:DiEdgeLike[N],EL,
     G[X,Y,Z<:DiEdgeLike[X],W] <: BaseDiGraph[X,Y,Z,W]](

@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import moments._
@@ -9,6 +9,9 @@ object VoterModel {
   type NL = String
   type EL = String
   val G = DiGraph.withType[N,NL,E,EL]
+  // https://www.scala-lang.org/files/archive/spec/2.13/07-implicits.html
+  // the next line shouldn't be necessary according to the spec
+  implicit val graphBuilder = DiGraph.empty[N,NL,E,EL] _
   def main(args: Array[String]): Unit = {
     // first flip
     val e = "u"~~>"v"
@@ -68,8 +71,8 @@ object VoterModel {
       noParallelEdges _)
     val printer = ODEPrinter(odes)
     printer.print
-    printer.saveAsOctave("voter.m", 0.04, 1000,
-      List(50.0,50,50,50,50,50,100)) // [0],[01],[10],[1],[00],[11],[*]
+    // printer.saveAsOctave("voter.m", 0.04, 1000,
+    //   List(50.0,50,50,50,50,50,100)) // [0],[01],[10],[1],[00],[11],[*]
     println()
     val varianceODE = generateMeanODEs(1,
       List(flip0a,flip0b,flip1a,flip1b,swap0a,swap0b,swap1a,swap1b),

@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import org.scalatest.{FlatSpec, Matchers}
@@ -366,36 +366,40 @@ class DiGraphSpec extends FlatSpec with Matchers {
   }
 
   val G = DiGraph.withType[N2,NL,E2,EL]
+  // https://www.scala-lang.org/files/archive/spec/2.13/07-implicits.html
+  // the next line shouldn't be necessary according to the spec
+  implicit val graphBuilder = DiGraph.empty[N2,NL,E2,EL] _
 
   it should "compute intersections with other graphs" in {
     val g1 = G("b"->"bimotor","c1"->"chain","c2"->"chain")(bc1,c1c2,bc2)
     val g2 = G("b"->"bimotor","c1"->"chain","c2"->"chain")(bc1,c1c2,bc3)
     val pbs = for ((pb,_,_) <- g1.intersections[N2,E2,N2,E2,DiGraph](g2)) yield pb
     pbs.length shouldBe 21
+    // FIXME: this test shouldn't assume an order for the pullbacks
     pbs(0) shouldBe empty
-    pbs(1) shouldBe G("(c2,c2)" -> "chain")()
-    pbs(2) shouldBe G("(c2,c1)" -> "chain")()
+    pbs(1) shouldBe G("(b,b)" -> "bimotor")()
+    pbs(2) shouldBe G("(c1,c1)" -> "chain")()
     pbs(3) shouldBe G("(c1,c2)" -> "chain")()
-    pbs(4) shouldBe G("(c1,c1)" -> "chain")()
-    pbs(5) shouldBe G("(b,b)" -> "bimotor")()
-    pbs(6) shouldBe G("(c1,c1)" -> "chain", "(c2,c2)" -> "chain")()
-    assert(pbs(7) iso G("(c1,c1)" -> "chain",
-      "(c2,c2)" -> "chain")("(c1,c1)" ~~> "(c2,c2)"))
-    pbs(8) shouldBe G("(c1,c2)" -> "chain", "(c2,c1)" -> "chain")()
-    pbs(9) shouldBe G("(b,b)" -> "bimotor", "(c2,c2)" -> "chain")()
-    pbs(10) shouldBe G("(b,b)" -> "bimotor", "(c2,c1)" -> "chain")()
-    assert(pbs(11) iso G("(b,b)" -> "bimotor",
-      "(c2,c1)" -> "chain")("(b,b)" ~~> "(c2,c1)"))
-    pbs(12) shouldBe G("(b,b)" -> "bimotor", "(c1,c2)" -> "chain")()
-    pbs(13) shouldBe G("(b,b)" -> "bimotor", "(c1,c1)" -> "chain")()
-    assert(pbs(14) iso G("(b,b)" -> "bimotor",
+    pbs(4) shouldBe G("(c2,c1)" -> "chain")()
+    pbs(5) shouldBe G("(c2,c2)" -> "chain")()
+    pbs(6) shouldBe G("(b,b)" -> "bimotor", "(c1,c1)" -> "chain")()
+    assert(pbs(7) iso G("(b,b)" -> "bimotor",
       "(c1,c1)" -> "chain")("(b,b)" ~~> "(c1,c1)"))
+    pbs(8) shouldBe G("(b,b)" -> "bimotor", "(c1,c2)" -> "chain")()
+    pbs(9) shouldBe G("(b,b)" -> "bimotor", "(c2,c1)" -> "chain")()
+    assert(pbs(10) iso G("(b,b)" -> "bimotor",
+      "(c2,c1)" -> "chain")("(b,b)" ~~> "(c2,c1)"))
+    pbs(11) shouldBe G("(b,b)" -> "bimotor", "(c2,c2)" -> "chain")()
+    pbs(12) shouldBe G("(c1,c1)" -> "chain", "(c2,c2)" -> "chain")()
+    assert(pbs(13) iso G("(c1,c1)" -> "chain",
+      "(c2,c2)" -> "chain")("(c1,c1)" ~~> "(c2,c2)"))
+    pbs(14) shouldBe G("(c1,c2)" -> "chain", "(c2,c1)" -> "chain")()
     pbs(15) shouldBe G("(b,b)" -> "bimotor", "(c1,c1)" -> "chain",
       "(c2,c2)" -> "chain")()
     assert(pbs(16) iso G("(b,b)" -> "bimotor", "(c1,c1)" ->
-      "chain", "(c2,c2)" -> "chain")("(c1,c1)" ~~> "(c2,c2)"))
-    assert(pbs(17) iso G("(b,b)" -> "bimotor", "(c1,c1)" ->
       "chain", "(c2,c2)" -> "chain")("(b,b)" ~~> "(c1,c1)"))
+    assert(pbs(17) iso G("(b,b)" -> "bimotor", "(c1,c1)" ->
+      "chain", "(c2,c2)" -> "chain")("(c1,c1)" ~~> "(c2,c2)"))
     assert(pbs(18) iso G("(b,b)" -> "bimotor", "(c1,c1)" ->
       "chain", "(c2,c2)" -> "chain")("(b,b)" ~~> "(c1,c1)",
         "(c1,c1)" ~~> "(c2,c2)"))
@@ -410,81 +414,85 @@ class DiGraphSpec extends FlatSpec with Matchers {
     val g2 = G("b"->"bimotor","c1"->"chain","c2"->"chain")(bc1,c1c2,bc3)
     val pos = for ((po,_,_) <- g1.unions[N2,E2,N2,E2,DiGraph](g2)) yield po
     pos.length shouldBe 21
+    // no overlap
     assert(pos(0) iso G(
       "(b,)" -> "bimotor", "(c1,)" -> "chain", "(c2,)" -> "chain",
       "(,b)" -> "bimotor", "(,c1)" -> "chain", "(,c2)" -> "chain")(
       "(b,)" ~~> "(c1,)", "(b,)" ~~> "(c2,)", "(c1,)" ~~> "(c2,)",
       "(,b)" ~~> "(,c1)", "(,b)" ~~> "(,c1)", "(,c1)" ~~> "(,c2)"))
+    // 1 node overlap
     assert(pos(1) iso G(
-      "(b,)" -> "bimotor", "(c1,)" -> "chain", "(c2,c2)" -> "chain",
-      "(,b)" -> "bimotor", "(,c1)" -> "chain")(
-      "(b,)" ~~> "(c1,)", "(b,)" ~~> "(c2,c2)", "(c1,)" ~~> "(c2,c2)",
-      "(,b)" ~~> "(,c1)", "(,b)" ~~> "(,c1)", "(,c1)" ~~> "(c2,c2)"))
+      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,)" -> "chain",
+      "(,c1)" -> "chain", "(,c2)" -> "chain")(
+      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,)", "(c1,)" ~~> "(c2,)",
+      "(b,b)" ~~> "(,c1)", "(b,b)" ~~> "(,c1)", "(,c1)" ~~> "(,c2)"))
     assert(pos(2) iso G(
-      "(b,)" -> "bimotor", "(c1,)" -> "chain", "(c2,c1)" -> "chain",
+      "(b,)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,)" -> "chain",
       "(,b)" -> "bimotor", "(,c2)" -> "chain")(
-      "(b,)" ~~> "(c1,)", "(b,)" ~~> "(c2,c1)", "(c1,)" ~~> "(c2,c1)",
-      "(,b)" ~~> "(c2,c1)", "(,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(,c2)"))
+      "(b,)" ~~> "(c1,c1)", "(b,)" ~~> "(c2,)", "(c1,c1)" ~~> "(c2,)",
+      "(,b)" ~~> "(c1,c1)", "(,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(,c2)"))
     assert(pos(3) iso G(
       "(b,)" -> "bimotor", "(c1,c2)" -> "chain", "(c2,)" -> "chain",
       "(,b)" -> "bimotor", "(,c1)" -> "chain")(
       "(b,)" ~~> "(c1,c2)", "(b,)" ~~> "(c2,)", "(c1,c2)" ~~> "(c2,)",
       "(,b)" ~~> "(,c1)", "(,b)" ~~> "(,c1)", "(,c1)" ~~> "(c1,c2)"))
     assert(pos(4) iso G(
-      "(b,)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,)" -> "chain",
+      "(b,)" -> "bimotor", "(c1,)" -> "chain", "(c2,c1)" -> "chain",
       "(,b)" -> "bimotor", "(,c2)" -> "chain")(
-      "(b,)" ~~> "(c1,c1)", "(b,)" ~~> "(c2,)", "(c1,c1)" ~~> "(c2,)",
-      "(,b)" ~~> "(c1,c1)", "(,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(,c2)"))
+      "(b,)" ~~> "(c1,)", "(b,)" ~~> "(c2,c1)", "(c1,)" ~~> "(c2,c1)",
+      "(,b)" ~~> "(c2,c1)", "(,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(,c2)"))
     assert(pos(5) iso G(
-      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,)" -> "chain",
-      "(,c1)" -> "chain", "(,c2)" -> "chain")(
-      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,)", "(c1,)" ~~> "(c2,)",
-      "(b,b)" ~~> "(,c1)", "(b,b)" ~~> "(,c1)", "(,c1)" ~~> "(,c2)"))
+      "(b,)" -> "bimotor", "(c1,)" -> "chain", "(c2,c2)" -> "chain",
+      "(,b)" -> "bimotor", "(,c1)" -> "chain")(
+      "(b,)" ~~> "(c1,)", "(b,)" ~~> "(c2,c2)", "(c1,)" ~~> "(c2,c2)",
+      "(,b)" ~~> "(,c1)", "(,b)" ~~> "(,c1)", "(,c1)" ~~> "(c2,c2)"))
+    // 2 nodes overlap
     assert(pos(6) iso G(
-      "(b,)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain",
-      "(,b)" -> "bimotor")(
-      "(b,)" ~~> "(c1,c1)", "(b,)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
-      "(,b)" ~~> "(c1,c1)", "(,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(c2,c2)"))
-    assert(pos(7) iso G(
-      "(b,)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain",
-      "(,b)" -> "bimotor")(
-      "(b,)" ~~> "(c1,c1)", "(b,)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
-      "(,b)" ~~> "(c1,c1)", "(,b)" ~~> "(c1,c1)"))
-    assert(pos(8) iso G(
-      "(b,)" -> "bimotor", "(c1,c2)" -> "chain", "(c2,c1)" -> "chain",
-      "(,b)" -> "bimotor")(
-      "(b,)" ~~> "(c1,c2)", "(b,)" ~~> "(c2,c1)", "(c1,c2)" ~~> "(c2,c1)",
-      "(,b)" ~~> "(c2,c1)", "(,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(c1,c2)"))
-    assert(pos(9) iso G(
-      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,c2)" -> "chain",
-      "(,c1)" -> "chain")(
-      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,c2)", "(c1,)" ~~> "(c2,c2)",
-      "(b,b)" ~~> "(,c1)", "(b,b)" ~~> "(,c1)", "(,c1)" ~~> "(c2,c2)"))
-    assert(pos(10) iso G(
-      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,c1)" -> "chain",
-      "(,c2)" -> "chain")(
-      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,c1)", "(c1,)" ~~> "(c2,c1)",
-      "(b,b)" ~~> "(c2,c1)", "(b,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(,c2)"))
-    assert(pos(11) iso G(
-      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,c1)" -> "chain",
-      "(,c2)" -> "chain")(
-      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,c1)", "(c1,)" ~~> "(c2,c1)",
-      "(b,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(,c2)"))
-    assert(pos(12) iso G(
-      "(b,b)" -> "bimotor", "(c1,c2)" -> "chain", "(c2,)" -> "chain",
-      "(,c1)" -> "chain")(
-      "(b,b)" ~~> "(c1,c2)", "(b,b)" ~~> "(c2,)", "(c1,c2)" ~~> "(c2,)",
-      "(b,b)" ~~> "(,c1)", "(b,b)" ~~> "(,c1)", "(,c1)" ~~> "(c1,c2)"))
-    assert(pos(13) iso G(
       "(b,b)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,)" -> "chain",
       "(,c2)" -> "chain")(
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c2,)", "(c1,c1)" ~~> "(c2,)",
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(,c2)"))
-    assert(pos(14) iso G(
+    assert(pos(7) iso G(
       "(b,b)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,)" -> "chain",
       "(,c2)" -> "chain")(
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c2,)", "(c1,c1)" ~~> "(c2,)",
       "(b,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(,c2)"))
+    assert(pos(8) iso G(
+      "(b,b)" -> "bimotor", "(c1,c2)" -> "chain", "(c2,)" -> "chain",
+      "(,c1)" -> "chain")(
+      "(b,b)" ~~> "(c1,c2)", "(b,b)" ~~> "(c2,)", "(c1,c2)" ~~> "(c2,)",
+      "(b,b)" ~~> "(,c1)", "(b,b)" ~~> "(,c1)", "(,c1)" ~~> "(c1,c2)"))
+    assert(pos(9) iso G(
+      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,c1)" -> "chain",
+      "(,c2)" -> "chain")(
+      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,c1)", "(c1,)" ~~> "(c2,c1)",
+      "(b,b)" ~~> "(c2,c1)", "(b,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(,c2)"))
+    assert(pos(10) iso G(
+      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,c1)" -> "chain",
+      "(,c2)" -> "chain")(
+      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,c1)", "(c1,)" ~~> "(c2,c1)",
+      "(b,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(,c2)"))
+    assert(pos(11) iso G(
+      "(b,b)" -> "bimotor", "(c1,)" -> "chain", "(c2,c2)" -> "chain",
+      "(,c1)" -> "chain")(
+      "(b,b)" ~~> "(c1,)", "(b,b)" ~~> "(c2,c2)", "(c1,)" ~~> "(c2,c2)",
+      "(b,b)" ~~> "(,c1)", "(b,b)" ~~> "(,c1)", "(,c1)" ~~> "(c2,c2)"))
+    assert(pos(12) iso G(
+      "(b,)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain",
+      "(,b)" -> "bimotor")(
+      "(b,)" ~~> "(c1,c1)", "(b,)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
+      "(,b)" ~~> "(c1,c1)", "(,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(c2,c2)"))
+    assert(pos(13) iso G(
+      "(b,)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain",
+      "(,b)" -> "bimotor")(
+      "(b,)" ~~> "(c1,c1)", "(b,)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
+      "(,b)" ~~> "(c1,c1)", "(,b)" ~~> "(c1,c1)"))
+    assert(pos(14) iso G(
+      "(b,)" -> "bimotor", "(c1,c2)" -> "chain", "(c2,c1)" -> "chain",
+      "(,b)" -> "bimotor")(
+      "(b,)" ~~> "(c1,c2)", "(b,)" ~~> "(c2,c1)", "(c1,c2)" ~~> "(c2,c1)",
+      "(,b)" ~~> "(c2,c1)", "(,b)" ~~> "(c2,c1)", "(c2,c1)" ~~> "(c1,c2)"))
+    // 3 nodes overlap
     assert(pos(15) iso G(
       "(b,b)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain")(
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
@@ -492,11 +500,11 @@ class DiGraphSpec extends FlatSpec with Matchers {
     assert(pos(16) iso G(
       "(b,b)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain")(
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
-      "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c1,c1)"))
+      "(b,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(c2,c2)"))
     assert(pos(17) iso G(
       "(b,b)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain")(
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",
-      "(b,b)" ~~> "(c1,c1)", "(c1,c1)" ~~> "(c2,c2)"))
+      "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c1,c1)"))
     assert(pos(18) iso G(
       "(b,b)" -> "bimotor", "(c1,c1)" -> "chain", "(c2,c2)" -> "chain")(
       "(b,b)" ~~> "(c1,c1)", "(b,b)" ~~> "(c2,c2)", "(c1,c1)" ~~> "(c2,c2)",

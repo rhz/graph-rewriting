@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import moments._
@@ -7,6 +7,9 @@ object TaylorRabbits {
   type N = String
   type E = IdDiEdge[Int,N]
   val G = DiGraph.withType[N,Unit,E,Unit]
+  // https://www.scala-lang.org/files/archive/spec/2.13/07-implicits.html
+  // the next line shouldn't be necessary according to the spec
+  implicit val graphBuilder = DiGraph.empty[N,Unit,E,Unit] _
   def main(args: Array[String]): Unit = {
     val (e1, e2) = ("father"~~>"daughter","mother"~~>"daughter")
     val parents = G("father","mother")()

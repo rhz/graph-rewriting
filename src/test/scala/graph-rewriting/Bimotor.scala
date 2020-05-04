@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import moments._
@@ -9,6 +9,9 @@ object Bimotor {
   type NL = String
   type EL = String
   val G = DiGraph.withType[N,NL,E,EL]
+  // https://www.scala-lang.org/files/archive/spec/2.13/07-implicits.html
+  // the next line shouldn't be necessary according to the spec
+  implicit val graphBuilder = DiGraph.empty[N,NL,E,EL] _
   def main(args: Array[String]): Unit = {
     val bc0 = "b" ~~> "c1"
     val bc1 = "b" ~~> "c1"
@@ -48,8 +51,8 @@ object Bimotor {
       invariant _,
       reachable _)
     ODEPrinter(odes).print
-    ODEPrinter(odes).saveAsOctave("bimotor.m", 5.0, 1000,
-      g => if (g eq g4) 1.0 else 0.0)
+    // ODEPrinter(odes).saveAsOctave("bimotor.m", 5.0, 1000,
+    //   g => if (g eq g4) 1.0 else 0.0)
   }
 }
 

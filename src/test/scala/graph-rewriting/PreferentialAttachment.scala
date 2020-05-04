@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import moments._
@@ -10,6 +10,9 @@ object PreferentialAttachment {
   type NL = String
   type EL = String
   val G = MarkedDiGraph.withType[N,NL,E,EL]
+  // https://www.scala-lang.org/files/archive/spec/2.13/07-implicits.html
+  // the next line shouldn't be necessary according to the spec
+  implicit val graphBuilder = MarkedDiGraph.empty[N,NL,E,EL] _
   def main(args: Array[String]): Unit = {
     val e1 = "B"~~>"A"
     val e2 = "C"~~>"A"
@@ -25,7 +28,8 @@ object PreferentialAttachment {
     // Death rule: A =>
     val death = Rule(g1,G()(),Map(),Map(),"kD")
 
-    def N(i: Int): MarkedDiGraph[N,NL,E,EL] =
+    // the star graph
+    def S(i: Int): MarkedDiGraph[N,NL,E,EL] =
       G(for (j <- 0 to i) yield s"$j",
         for (j <- 1 to i) yield s"$j"~~>"0").inMark("0")
 
@@ -42,7 +46,7 @@ object PreferentialAttachment {
 
     val odes = generateMeanODEs(10,
       List(birth,pa,death),
-      List(g1,g2,g3)) //,N(0),N(1)))
+      List(g1,g2,g3)) //,S(0),S(1)))
     val p = ODEPrinter(odes)
     p.print
     // p.saveAsOctave("pa.m", 5.0, 1000,

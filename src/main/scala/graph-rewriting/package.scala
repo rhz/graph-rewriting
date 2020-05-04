@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 
 import scala.language.{ higherKinds, implicitConversions }
 

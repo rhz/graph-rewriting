@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 import org.scalatest.{FlatSpec, Matchers}
@@ -105,6 +105,10 @@ class MarkedDiGraphSpec extends FlatSpec with Matchers {
   type N2 = String
   type E2 = IdDiEdge[Int,N2]
   val M = MarkedDiGraph.withType[N2,NL,E2,EL]
+  // https://www.scala-lang.org/files/archive/spec/2.13/07-implicits.html
+  // the next line shouldn't be necessary according to the spec
+  implicit val graphBuilder = MarkedDiGraph.empty[N2,NL,E2,EL] _
+
   val c1c2 = "c1"~~>"c2"
   val bc1 = "b"~~>"c1"
   val bc2 = "b"~~>"c2"

@@ -17,6 +17,4 @@ project/plugins/project/
 .worksheet
 
 # My own stuff
-failures/
-*.m
-*.out
+output/

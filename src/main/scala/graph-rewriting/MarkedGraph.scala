@@ -1,4 +1,4 @@
-package uk.ac.ed.inf
+package hz.ricardo
 package graph_rewriting
 
 // This is needed because mutable.Map.keySet returns a collection.Set
@@ -147,6 +147,8 @@ abstract class BaseMarkedDiGraph[N, NL, E <: DiEdgeLike[N], EL]
         if (queue.isEmpty) Some(Arrow(this.asThis,thatM.asInstanceOf[H[N2,NL,E2,EL]],fn,fe))
         else {
           val (u,v) = queue.head
+          // TODO: why do arrows preserve marks? because of arrow composition?
+          // TODO: do marks affect in any way the matching algorithm?
           if ((this(u).inDegree != thatM(v).inDegree) ||
               (this(u).outDegree != thatM(v).outDegree) ||
               (this(u).inMarked != thatM(v).inMarked) ||
