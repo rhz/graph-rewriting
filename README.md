@@ -18,6 +18,8 @@ Use
 5. Create another graph and try taking the intersection of subgraphs of these two graphs for instance: `val g2 = Graph("b" -> "bimotor", "c1" -> "chain", "c2" -> "chain")("b"~~>"c1", "b"~~>"c1", "c1"~~>"c2"); intersections(g1, g2)`
 6. Play!
 
+You might also want to run one of the example models in `src/test/scala/graph-rewriting/` by running `sbt test:run`.
+
 ### Mean field approximations
 
 1. Define a set of rules
